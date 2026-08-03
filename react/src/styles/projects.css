@@ -1,0 +1,48 @@
+.project-grid {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.7rem;
+}
+
+.project-card {
+  border: 1px solid rgba(122, 164, 255, 0.32);
+  border-radius: 0.8rem;
+  background: rgba(10, 17, 37, 0.86);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.project-card h3 {
+  margin: 0;
+}
+
+.project-allocate-actions {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.project-user-list {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 11rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.project-user-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(122, 164, 255, 0.2);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.45rem;
+  background: rgba(14, 23, 46, 0.8);
+}
+
+.project-user-row small {
+  grid-column: 1;
+  color: #b8c6e8;
+}

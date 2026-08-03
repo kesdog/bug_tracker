@@ -1,0 +1,219 @@
+.login-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  font-size: 0.95rem;
+}
+
+input,
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+input:not([class*='Mui']) {
+  width: 100%;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border-subtle);
+  background: oklch(99% 0.008 98 / 0.92);
+  color: var(--text-primary);
+  padding: 0.68rem 0.75rem;
+}
+
+.dark input:not([class*='Mui']) {
+  border-color: oklch(55% 0.1 258 / 0.58);
+  background: oklch(20% 0.055 260);
+}
+
+input[type='checkbox'] {
+  width: auto;
+}
+
+input:not([class*='Mui']):focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button:not([class*='Mui']) {
+  border: 0;
+  border-radius: 0.7rem;
+  padding: 0.72rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: oklch(98% 0.003 255);
+  background: linear-gradient(135deg, oklch(42% 0.008 255) 0%, oklch(32% 0.01 255) 100%);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark button:not([class*='Mui']) {
+  color: oklch(16% 0.04 254);
+  background: linear-gradient(135deg, oklch(80% 0.13 238) 0%, oklch(82% 0.15 207) 100%);
+}
+
+button:not([class*='Mui']):not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+button:not([class*='Mui']):disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.add-bug-form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+textarea:not([class*='Mui']),
+select:not([class*='Mui']) {
+  width: 100%;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border-subtle);
+  background: oklch(99% 0.008 98 / 0.92);
+  color: var(--text-primary);
+  padding: 0.68rem 0.75rem;
+}
+
+.dark textarea:not([class*='Mui']),
+.dark select:not([class*='Mui']) {
+  border-color: oklch(55% 0.1 258 / 0.58);
+  background: oklch(20% 0.055 260);
+}
+
+textarea:not([class*='Mui']):focus,
+select:not([class*='Mui']):focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+button.filter-button {
+  border: 1px solid var(--border-subtle);
+  background: oklch(96% 0.004 255 / 0.92);
+  color: var(--text-secondary);
+  padding: 0.45rem 0.8rem;
+}
+
+.dark button.filter-button {
+  background: var(--surface-row);
+  color: var(--text-secondary);
+}
+
+button.filter-button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.dark button.filter-button.active {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+button.tiny-action {
+  border: 1px solid var(--border-subtle);
+  background: oklch(96% 0.004 255 / 0.92);
+  color: var(--text-secondary);
+  padding: 0.24rem 0.5rem;
+  border-radius: 0.45rem;
+  font-size: 0.75rem;
+}
+
+.dark button.tiny-action {
+  background: var(--surface-row);
+  color: var(--text-secondary);
+}
+
+button.filter-button:focus-visible,
+button.tiny-action:focus-visible,
+.tiny-upload-label:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tiny-upload-label {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  background: oklch(96% 0.004 255 / 0.92);
+  color: var(--text-secondary);
+  padding: 0.24rem 0.5rem;
+  border-radius: 0.45rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.dark .tiny-upload-label {
+  background: oklch(25% 0.07 260 / 0.76);
+}
+
+.tiny-upload-input {
+  display: none;
+}
+
+.tag-fieldset {
+  border: 1px solid oklch(55% 0.1 258 / 0.45);
+  border-radius: 0.75rem;
+  padding: 0.7rem;
+}
+
+.tag-fieldset legend {
+  color: var(--text-secondary);
+  padding: 0 0.35rem;
+}
+
+.field-help {
+  color: var(--text-secondary);
+  margin: 0 0 0.55rem;
+}
+
+.tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.tag-choice {
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+}
+
+.structured-report-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.evidence-list {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+.evidence-empty {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.evidence-row {
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.65rem;
+  display: flex;
+  gap: 0.55rem;
+  justify-content: space-between;
+  padding: 0.45rem 0.55rem;
+}

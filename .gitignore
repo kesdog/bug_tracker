@@ -1,0 +1,39 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node
+react/node_modules/
+react/dist/
+
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Test and coverage artifacts
+TestResults/
+coverage/
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# Local agent tooling
+.opencode/
+
+# Local runtime data
+data/
+**/logs/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.log
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

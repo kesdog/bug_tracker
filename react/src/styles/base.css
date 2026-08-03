@@ -1,0 +1,59 @@
+:root {
+  --surface-deep: oklch(95% 0.004 255);
+  --surface: oklch(98% 0.003 255);
+  --surface-raised: oklch(99.5% 0.002 255);
+  --surface-row: oklch(99% 0.002 255);
+  --surface-row-alt: oklch(96% 0.004 255);
+  --border-subtle: oklch(82% 0.006 255 / 0.72);
+  --border-strong: oklch(58% 0.008 255 / 0.6);
+  --text-primary: oklch(23% 0.008 255);
+  --text-secondary: oklch(42% 0.008 255);
+  --text-muted: oklch(56% 0.008 255);
+  --accent: oklch(38% 0.008 255);
+  --accent-strong: oklch(28% 0.01 255);
+  --accent-soft: oklch(90% 0.006 255);
+  --shadow-panel: 0 1.5rem 4rem oklch(24% 0.006 255 / 0.14);
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 14% 10%, oklch(93% 0.005 255 / 0.86) 0, transparent 26rem),
+    radial-gradient(circle at 90% 18%, oklch(90% 0.006 255 / 0.5) 0, transparent 22rem),
+    linear-gradient(135deg, oklch(99% 0.002 255) 0%, oklch(96% 0.004 255) 52%, oklch(93% 0.006 255) 100%);
+}
+
+.dark {
+  --surface-deep: oklch(15% 0.035 262);
+  --surface: oklch(18% 0.04 262);
+  --surface-raised: oklch(23% 0.055 264);
+  --surface-row: oklch(18.5% 0.04 260);
+  --surface-row-alt: oklch(21% 0.045 260);
+  --border-subtle: oklch(60% 0.12 258 / 0.34);
+  --border-strong: oklch(70% 0.14 250 / 0.54);
+  --text-primary: oklch(97% 0.01 250);
+  --text-secondary: oklch(82% 0.055 255);
+  --text-muted: oklch(70% 0.045 255);
+  --accent: oklch(77% 0.16 225);
+  --accent-strong: oklch(72% 0.18 242);
+  --accent-soft: oklch(35% 0.12 254 / 0.72);
+  --shadow-panel: 0 1.5rem 4rem oklch(8% 0.035 260 / 0.72);
+  background:
+    radial-gradient(circle at 14% 10%, oklch(34% 0.105 258 / 0.72) 0, transparent 26rem),
+    radial-gradient(circle at 90% 18%, oklch(27% 0.07 226 / 0.42) 0, transparent 22rem),
+    linear-gradient(135deg, oklch(18% 0.045 262) 0%, oklch(12% 0.03 260) 52%, oklch(10% 0.025 254) 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: inherit;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

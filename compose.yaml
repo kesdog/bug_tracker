@@ -1,0 +1,67 @@
+name: bug-tracker
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SESSION_INACTIVITY_MINUTES: ${VITE_SESSION_INACTIVITY_MINUTES:-45}
+    image: ${BUG_TRACKER_IMAGE:-bug-tracker:local}
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Demo}
+      ASPNETCORE_URLS: http://+:8080
+      Database__Path: /data/bug_tracker.db
+      Audit__LogDirectory: /data/audit
+      Readiness__MinimumFreeBytes: ${Readiness__MinimumFreeBytes:-104857600}
+      Auth__TokenSecret: ${Auth__TokenSecret:?copy .env.example to .env and set Auth__TokenSecret}
+      DemoReset__Enabled: ${DemoReset__Enabled:-true}
+      DemoReset__HourUtc: ${DemoReset__HourUtc:-4}
+      DemoReset__AllowedEnvironments__0: ${DemoReset__AllowedEnvironments__0:-Demo}
+      DemoReset__DrainTimeoutSeconds: ${DemoReset__DrainTimeoutSeconds:-30}
+      AgentWebSocket__CloseTimeoutSeconds: ${AgentWebSocket__CloseTimeoutSeconds:-5}
+      AgentWebSocket__MaxConnections: ${AgentWebSocket__MaxConnections:-100}
+      AgentWebSocket__MaxConnectionsPerUser: ${AgentWebSocket__MaxConnectionsPerUser:-5}
+      DemoAbuse__StorageSafetyReserveBytes: ${DemoAbuse__StorageSafetyReserveBytes:-268435456}
+      DemoAbuse__MaxProjects: ${DemoAbuse__MaxProjects:-25}
+      DemoAbuse__MaxTickets: ${DemoAbuse__MaxTickets:-300}
+      DemoAbuse__MaxComments: ${DemoAbuse__MaxComments:-600}
+      DemoAbuse__MaxAttachments: ${DemoAbuse__MaxAttachments:-100}
+      DemoAbuse__MaxEvidenceBytes: ${DemoAbuse__MaxEvidenceBytes:-268435456}
+      ForwardedHeaders__Enabled: ${ForwardedHeaders__Enabled:-false}
+      ForwardedHeaders__ForwardLimit: ${ForwardedHeaders__ForwardLimit:-1}
+      ForwardedHeaders__KnownProxies__0: ${ForwardedHeaders__KnownProxies__0:-127.0.0.1}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-8080}:8080"
+    volumes:
+      - bug-tracker-data:/data
+    user: app
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/health/ready"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      rollback_config:
+        order: stop-first
+
+volumes:
+  bug-tracker-data:

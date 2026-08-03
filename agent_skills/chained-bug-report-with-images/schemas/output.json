@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChainedBugReportOutput",
+  "type": "object",
+  "required": ["reportText", "reportImages", "unresolvedImageRefs"],
+  "properties": {
+    "reportText": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Final report text containing only indexed image tokens in the form [[img:n]]."
+    },
+    "reportImages": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "contentType", "dataUrl"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "contentType": { "type": "string", "minLength": 1 },
+          "dataUrl": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "unresolvedImageRefs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Image reference names that could not be mapped to reportImages[]"
+    }
+  },
+  "additionalProperties": false
+}

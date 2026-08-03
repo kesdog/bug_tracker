@@ -1,0 +1,85 @@
+.allocate-panel {
+  width: min(36rem, 95vw);
+  height: auto;
+  max-height: 85vh;
+}
+
+.allocate-form {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.5rem;
+}
+
+.bulk-id-preview {
+  border: 1px solid rgba(122, 164, 255, 0.22);
+  border-radius: 0.65rem;
+  color: #b8c6e8;
+  font-size: 0.86rem;
+  margin: 0.55rem 0;
+  overflow-wrap: anywhere;
+  padding: 0.55rem;
+}
+
+.action-panel {
+  width: min(40rem, 95vw);
+  height: auto;
+  max-height: 90vh;
+}
+
+.action-panel-buttons {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+
+.metadata-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.metadata-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.metadata-grid label,
+.metadata-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.conflict-field {
+  border-color: var(--warning, #c87800) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning, #c87800) 24%, transparent);
+}
+
+.conflict-field-note {
+  color: var(--text-secondary);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 0.3rem;
+}
+
+.conflict-resolution {
+  border-color: color-mix(in srgb, var(--warning, #c87800) 45%, var(--border-subtle)) !important;
+  padding: 0.75rem;
+}
+
+.conflict-value {
+  min-width: 0;
+  flex: 1;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--warning, #c87800) 7%, transparent);
+  padding: 0.6rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.report-builder-editor.conflict-field {
+  border: 1px solid var(--warning, #c87800);
+  border-radius: 0.75rem;
+  padding: 0.55rem;
+}

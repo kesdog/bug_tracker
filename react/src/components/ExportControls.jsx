@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { exportBugs } from '../api/bugs';
+import { useI18n } from '../i18n';
 
 const EXPORT_ROLES = new Set(['senior', 'admin']);
 
@@ -19,6 +20,7 @@ function downloadBlob(blob, filename) {
 }
 
 export default function ExportControls({ token, userRole, tickets, viewName }) {
+  const { t } = useI18n();
   const [exportingFormat, setExportingFormat] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -41,22 +43,22 @@ export default function ExportControls({ token, userRole, tickets, viewName }) {
     try {
       const result = await exportBugs(token, format, visibleTicketIds);
       downloadBlob(result.blob, result.filename);
-      setSuccess(`Exported ${visibleTicketIds.length} visible ${viewName || 'ticket'}${visibleTicketIds.length === 1 ? '' : 's'}.`);
+      setSuccess(t('tickets.export.success', 'Exported {{count}} visible {{viewName}}.', { count: visibleTicketIds.length, viewName: viewName || t('tickets.singular', 'ticket') }));
     } catch (err) {
-      setError(err.message || 'Unable to export visible tickets.');
+      setError(err.message || t('tickets.export.error', 'Unable to export visible tickets.'));
     } finally {
       setExportingFormat('');
     }
   }
 
   return (
-    <div className="export-controls" aria-label="Export visible tickets">
-      <span className="export-controls-label">Export visible</span>
+    <div className="export-controls" aria-label={t('tickets.export.ariaLabel', 'Export visible tickets')}>
+      <span className="export-controls-label">{t('tickets.export.visible', 'Export visible')}</span>
       <button type="button" className="filter-button" onClick={() => handleExport('csv')} disabled={disabled}>
-        {exportingFormat === 'csv' ? 'Exporting CSV...' : 'CSV'}
+        {exportingFormat === 'csv' ? t('tickets.export.exportingCsv', 'Exporting CSV...') : 'CSV'}
       </button>
       <button type="button" className="filter-button" onClick={() => handleExport('json')} disabled={disabled}>
-        {exportingFormat === 'json' ? 'Exporting JSON...' : 'JSON'}
+        {exportingFormat === 'json' ? t('tickets.export.exportingJson', 'Exporting JSON...') : 'JSON'}
       </button>
       {error ? <span role="alert" className="export-status error-text">{error}</span> : null}
       {success ? <span className="export-status success-text">{success}</span> : null}

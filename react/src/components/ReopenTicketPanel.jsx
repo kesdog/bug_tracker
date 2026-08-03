@@ -12,8 +12,10 @@ import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
 import { ConflictNotice, ConflictSnapshotReview } from './ConcurrencyConflict';
 import { conflictFields } from '../concurrency';
+import { useI18n } from '../i18n';
 
 export default function ReopenTicketPanel({ ticket, latestTicket = null, submitting = false, error = '', conflict = null, conflictRefreshError = '', onConflictReview, onSubmit, onClose }) {
+  const { t } = useI18n();
   const [reason, setReason] = useState('');
   const [validationError, setValidationError] = useState('');
   const [reconfirmed, setReconfirmed] = useState(false);
@@ -31,7 +33,7 @@ export default function ReopenTicketPanel({ ticket, latestTicket = null, submitt
     event.preventDefault();
     const normalizedReason = reason.trim();
     if (!normalizedReason) {
-      setValidationError('Reopen reason is required.');
+      setValidationError(t('tickets.reopen.reasonRequired', 'Reopen reason is required.'));
       return;
     }
 
@@ -40,10 +42,10 @@ export default function ReopenTicketPanel({ ticket, latestTicket = null, submitt
   }
 
   return (
-    <Dialog open onClose={onClose} aria-label="Reopen ticket" maxWidth="sm">
+    <Dialog open onClose={onClose} aria-label={t('tickets.reopen.ariaLabel', 'Reopen ticket')} maxWidth="sm">
       <DialogTitle sx={{ pr: 7 }}>
-        Reopen Ticket
-        <IconButton type="button" className="report-close" aria-label="Close reopen panel" onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}>
+        {t('tickets.reopen.title', 'Reopen Ticket')}
+        <IconButton type="button" className="report-close" aria-label={t('tickets.reopen.close', 'Close reopen panel')} onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -52,10 +54,10 @@ export default function ReopenTicketPanel({ ticket, latestTicket = null, submitt
         <Stack component="form" id="reopen-ticket-form" className="metadata-form" spacing={2} onSubmit={submitForm}>
           <TextField
             id="reopen-reason"
-            label="Reason"
+            label={t('common.reason', 'Reason')}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Why should this ticket return to active work?"
+            placeholder={t('tickets.reopen.placeholder', 'Why should this ticket return to active work?')}
             rows={5}
             multiline
             fullWidth
@@ -76,8 +78,8 @@ export default function ReopenTicketPanel({ ticket, latestTicket = null, submitt
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button type="button" variant="outlined" onClick={onClose}>Cancel</Button>
-        <Button type="submit" form="reopen-ticket-form" disabled={submitting || unresolved.length > 0 || (Boolean(conflict) && (!reconfirmed || !actionStillValid))}>{submitting ? 'Reopening...' : 'Reopen Ticket'}</Button>
+        <Button type="button" variant="outlined" onClick={onClose}>{t('common.cancel', 'Cancel')}</Button>
+        <Button type="submit" form="reopen-ticket-form" disabled={submitting || unresolved.length > 0 || (Boolean(conflict) && (!reconfirmed || !actionStillValid))}>{submitting ? t('tickets.reopen.submitting', 'Reopening...') : t('tickets.reopen.title', 'Reopen Ticket')}</Button>
       </DialogActions>
     </Dialog>
   );

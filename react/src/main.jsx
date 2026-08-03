@@ -8,6 +8,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import App from './App';
 import './styles/styles.css';
 import { appTheme, defaultColorMode } from './theme';
+import { I18nProvider } from './i18n';
 
 const nonce = document.querySelector('meta[name="csp-nonce"]')?.getAttribute('content');
 const emotionCache = createCache({ key: 'bug-tracker', nonce: nonce && nonce !== '__CSP_NONCE__' ? nonce : undefined, prepend: true });
@@ -18,7 +19,7 @@ createRoot(document.getElementById('root')).render(
       <InitColorSchemeScript attribute="class" defaultMode={defaultColorMode} nonce={nonce && nonce !== '__CSP_NONCE__' ? nonce : undefined} />
       <ThemeProvider theme={appTheme} defaultMode={defaultColorMode} disableTransitionOnChange noSsr>
         <CssBaseline />
-        <App />
+        <I18nProvider><App /></I18nProvider>
       </ThemeProvider>
     </CacheProvider>
   </React.StrictMode>

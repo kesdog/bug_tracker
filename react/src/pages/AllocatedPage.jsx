@@ -12,6 +12,7 @@ import useTicketReport from '../hooks/useTicketReport';
 import { getProjectName } from '../table_utils';
 import { clearReviewedConflictFields, recoverTicketConflict } from '../concurrency';
 import { writeAppUrlState } from '../url_state';
+import { useI18n } from '../i18n';
 
 const ACTION_MODIFY = 'modify';
 const ACTION_EDIT_INITIAL = 'edit-initial';
@@ -31,28 +32,28 @@ function hasSolutionReport(ticket) {
   return Boolean((ticket?.postResolutionReport || ticket?.resolutionNotes || '').trim()) || (ticket?.resolutionReportImages || []).length > 0;
 }
 
-function getActionPanelCopy(actionType, ticket) {
+function getActionPanelCopy(actionType, ticket, t) {
   if (actionType === ACTION_EDIT_INITIAL) {
     return {
-      title: 'Edit Bug Report',
-      submitLabel: 'Save Bug Report',
-      notesLabel: 'Bug Report'
+       title: t('pages.allocated.editBugReport', 'Edit Bug Report'),
+       submitLabel: t('pages.allocated.saveBugReport', 'Save Bug Report'),
+       notesLabel: t('pages.allocated.bugReport', 'Bug Report')
     };
   }
 
   if (actionType === ACTION_MODIFY) {
     const hasSolution = hasSolutionReport(ticket);
     return {
-      title: hasSolution ? 'Modify Solution Steps' : 'Create Solution',
-      submitLabel: 'Save Report',
-      notesLabel: 'Solution Steps'
+       title: hasSolution ? t('pages.allocated.modifySolutionSteps', 'Modify Solution Steps') : t('pages.allocated.createSolution', 'Create Solution'),
+       submitLabel: t('pages.allocated.saveReport', 'Save Report'),
+       notesLabel: t('pages.allocated.solutionSteps', 'Solution Steps')
     };
   }
 
   return {
-    title: 'Close Bug',
-    submitLabel: 'Close Bug',
-    notesLabel: 'Solution Steps'
+     title: t('pages.allocated.closeBug', 'Close Bug'),
+     submitLabel: t('pages.allocated.closeBug', 'Close Bug'),
+     notesLabel: t('pages.allocated.solutionSteps', 'Solution Steps')
   };
 }
 
@@ -62,6 +63,7 @@ function renderPriority(ticket) {
 }
 
 export default function AllocatedPage({ token, userRole, userType = 'human', currentUserId = '', initialSearch = '', initialQuickFilter = 'all', initialFilters = EMPTY_FILTERS, initialTicketId = '' }) {
+  const { t } = useI18n();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -119,7 +121,7 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
         setActionType(actionTypeValue);
       }
     } catch (err) {
-      setActionError(err.message || 'Unable to load ticket details.');
+       setActionError(err.message || t('pages.allocated.errors.loadTicketDetails', 'Unable to load ticket details.'));
     }
   }
 
@@ -133,7 +135,7 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
       closeActionPanels();
       setReloadKey((value) => value + 1);
     } catch (err) {
-      setCancelError(err.message || 'Unable to cancel ticket.');
+       setCancelError(err.message || t('pages.allocated.errors.cancelTicket', 'Unable to cancel ticket.'));
     } finally {
       setCancelSubmitting(false);
     }
@@ -164,7 +166,7 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
       if (recovered) {
         setActionConflict(recovered);
       } else {
-        setActionError(err.message || 'Unable to save bug action.');
+         setActionError(err.message || t('pages.allocated.errors.saveBugAction', 'Unable to save bug action.'));
       }
     } finally {
       setActionSubmitting(false);
@@ -187,7 +189,7 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
       if (recovered) {
         setActionConflict(recovered);
       } else {
-        setActionError(err.message || 'Unable to update ticket metadata.');
+         setActionError(err.message || t('pages.allocated.errors.updateTicketMetadata', 'Unable to update ticket metadata.'));
       }
     } finally {
       setActionSubmitting(false);
@@ -195,26 +197,26 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
   }
 
   const columns = [
-    { key: 'issueTitle', label: 'Bug', sortable: true, defaultDirection: 'asc' },
-    { key: 'status', label: 'Status', sortable: true, defaultDirection: 'asc' },
-    { key: 'assignedAt', label: 'Active Since', sortable: true, defaultDirection: 'desc' },
+    { key: 'issueTitle', label: t('common.bug', 'Bug'), sortable: true, defaultDirection: 'asc' },
+    { key: 'status', label: t('common.status', 'Status'), sortable: true, defaultDirection: 'asc' },
+    { key: 'assignedAt', label: t('common.activeSince', 'Active Since'), sortable: true, defaultDirection: 'desc' },
     {
       key: 'projectName',
-      label: 'Project',
+      label: t('common.project', 'Project'),
       sortable: true,
       defaultDirection: 'asc',
       render: (ticket) => getProjectName(ticket)
     },
     {
       key: 'severity',
-      label: 'Severity',
+      label: t('common.severity', 'Severity'),
       sortable: true,
       defaultDirection: 'desc',
       render: (ticket) => <SeverityChip value={ticket.severity} />
     },
     {
       key: 'priority',
-      label: 'Priority',
+      label: t('common.priority', 'Priority'),
       sortable: true,
       defaultDirection: 'desc',
       render: renderPriority
@@ -224,27 +226,27 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
   const rowMenuItems = [
     {
       key: 'view-reports',
-      label: 'View Reports',
+      label: t('common.viewReports', 'View Reports'),
       onSelect: report.openReport
     },
     {
       key: ACTION_EDIT_INITIAL,
-      label: 'Edit Bug Report',
+      label: t('pages.allocated.editBugReport', 'Edit Bug Report'),
       onSelect: (ticket) => openActionForTicket(ticket, ACTION_EDIT_INITIAL)
     },
     {
       key: ACTION_MODIFY,
-      label: (ticket) => hasSolutionReport(ticket) ? 'Modify Solution Steps' : 'Create Solution',
+      label: (ticket) => hasSolutionReport(ticket) ? t('pages.allocated.modifySolutionSteps', 'Modify Solution Steps') : t('pages.allocated.createSolution', 'Create Solution'),
       onSelect: (ticket) => openActionForTicket(ticket, ACTION_MODIFY)
     },
     {
       key: ACTION_EDIT_METADATA,
-      label: 'Edit Metadata',
+      label: t('pages.allocated.editMetadata', 'Edit Metadata'),
       onSelect: (ticket) => openActionForTicket(ticket, ACTION_EDIT_METADATA)
     },
     {
       key: ACTION_CLOSE,
-      label: 'Close Bug',
+      label: t('pages.allocated.closeBug', 'Close Bug'),
       onSelect: (ticket) => openActionForTicket(ticket, ACTION_CLOSE)
     }
   ];
@@ -267,7 +269,7 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
       } catch (err) {
         if (isActive) {
           setTickets([]);
-          setError(err.message || 'Unable to load allocated tickets.');
+           setError(err.message || t('pages.allocated.errors.loadTickets', 'Unable to load allocated tickets.'));
         }
       } finally {
         if (isActive) {
@@ -323,8 +325,8 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
 
   return (
     <section className="dashboard">
-      <h2>Allocated Bugs</h2>
-      <p className="subtitle">Review bugs currently assigned to you, update reports, and close resolved items.</p>
+       <h2>{t('pages.allocated.title', 'Allocated Bugs')}</h2>
+       <p className="subtitle">{t('pages.allocated.subtitle', 'Review bugs currently assigned to you, update reports, and close resolved items.')}</p>
 
       {error ? (
         <p role="alert" className="error-text">
@@ -332,27 +334,27 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
         </p>
       ) : null}
 
-      {loading ? <div className="spinner" aria-label="loading allocated bugs" /> : null}
+       {loading ? <div className="spinner" aria-label={t('pages.allocated.loading', 'loading allocated bugs')} /> : null}
 
       <form className="ticket-tools" onSubmit={submitSearch}>
-        <label htmlFor="allocatedSearch">Search allocated bugs</label>
+         <label htmlFor="allocatedSearch">{t('pages.allocated.searchLabel', 'Search allocated bugs')}</label>
         <div className="ticket-search-row">
-          <input id="allocatedSearch" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Title, report, project, tag, priority..." />
-          <button type="submit">Search</button>
+           <input id="allocatedSearch" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder={t('pages.allocated.searchPlaceholder', 'Title, report, project, tag, priority...')} />
+           <button type="submit">{t('common.search', 'Search')}</button>
         </div>
         <CollapsibleFilters
           id="allocated-ticket-filters"
           activeCount={Number(quickFilter !== 'all') + Object.values(serverFilters).filter(Boolean).length}
         >
           <div className="filter-row">
-            <button type="button" aria-pressed={quickFilter === 'all'} className={`filter-button ${quickFilter === 'all' ? 'active' : ''}`} onClick={() => changeQuickFilter('all')}>All</button>
-            <button type="button" aria-pressed={quickFilter === 'urgent'} className={`filter-button ${quickFilter === 'urgent' ? 'active' : ''}`} onClick={() => changeQuickFilter('urgent')}>Urgent</button>
-            <button type="button" aria-pressed={quickFilter === 'recently-updated'} className={`filter-button ${quickFilter === 'recently-updated' ? 'active' : ''}`} onClick={() => changeQuickFilter('recently-updated')}>Recently Updated</button>
+             <button type="button" aria-pressed={quickFilter === 'all'} className={`filter-button ${quickFilter === 'all' ? 'active' : ''}`} onClick={() => changeQuickFilter('all')}>{t('common.all', 'All')}</button>
+             <button type="button" aria-pressed={quickFilter === 'urgent'} className={`filter-button ${quickFilter === 'urgent' ? 'active' : ''}`} onClick={() => changeQuickFilter('urgent')}>{t('common.urgent', 'Urgent')}</button>
+             <button type="button" aria-pressed={quickFilter === 'recently-updated'} className={`filter-button ${quickFilter === 'recently-updated' ? 'active' : ''}`} onClick={() => changeQuickFilter('recently-updated')}>{t('common.recentlyUpdated', 'Recently Updated')}</button>
           </div>
           <div className="server-filter-grid" aria-label="Server allocated bug filters">
             <label htmlFor="allocated-priority-filter">Priority
               <select id="allocated-priority-filter" value={filterDraft.priority} onChange={(event) => setFilterDraft((current) => ({ ...current, priority: event.target.value }))}>
-                <option value="">Any</option>
+                <option value="">{t('common.any', 'Any')}</option>
                 <option value="p0">P0</option>
                 <option value="p1">P1</option>
                 <option value="p2">P2</option>
@@ -361,7 +363,7 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
             </label>
             <label htmlFor="allocated-severity-filter">Severity
               <select id="allocated-severity-filter" value={filterDraft.severity} onChange={(event) => setFilterDraft((current) => ({ ...current, severity: event.target.value }))}>
-                <option value="">Any</option>
+                <option value="">{t('common.any', 'Any')}</option>
                 <option value="low">low</option>
                 <option value="mid">mid</option>
                 <option value="high">high</option>
@@ -375,17 +377,17 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
               <input id="allocated-project-filter" value={filterDraft.projectId} onChange={(event) => setFilterDraft((current) => ({ ...current, projectId: event.target.value }))} placeholder="proj_123" />
             </label>
             <div className="server-filter-actions">
-              <button type="button" onClick={submitServerFilters}>Apply Filters</button>
-              <button type="button" className="tiny-action" onClick={resetServerFilters}>Reset Filters</button>
+              <button type="button" onClick={submitServerFilters}>{t('common.applyFilters', 'Apply Filters')}</button>
+              <button type="button" className="tiny-action" onClick={resetServerFilters}>{t('common.resetFilters', 'Reset Filters')}</button>
             </div>
           </div>
         </CollapsibleFilters>
         <ExportControls token={token} userRole={userRole} tickets={quickFilteredTickets} viewName="allocated bug" />
       </form>
-      {quickFilter === 'recently-updated' ? <p className="subtitle">Recently Updated sorts this current page only.</p> : null}
-      {quickFilter === 'urgent' ? <p className="subtitle">Urgent (urgent severity or P0) filters the current page because the server does not expose an OR filter.</p> : null}
+       {quickFilter === 'recently-updated' ? <p className="subtitle">{t('pages.allocated.recentlyUpdatedHelp', 'Recently Updated sorts this current page only.')}</p> : null}
+       {quickFilter === 'urgent' ? <p className="subtitle">{t('pages.allocated.urgentHelp', 'Urgent (urgent severity or P0) filters the current page because the server does not expose an OR filter.')}</p> : null}
 
-      {!loading && !error && quickFilteredTickets.length === 0 ? <p className="dashboard-empty">No bugs have been allocated to you.</p> : null}
+       {!loading && !error && quickFilteredTickets.length === 0 ? <p className="dashboard-empty">{t('pages.allocated.empty', 'No bugs have been allocated to you.')}</p> : null}
 
       {!error && (totalCount > 0 || quickFilteredTickets.length > 0) ? (
         <TicketTable tickets={quickFilteredTickets} columns={columns} rowMenuItems={rowMenuItems} loading={loading} currentUserId={currentUserId} rowCount={totalCount} paginationModel={paginationModel} onPaginationModelChange={(next) => { if (next.pageSize !== paginationModel.pageSize) cursors.current = [null]; setPaginationModel(next.pageSize !== paginationModel.pageSize ? { ...next, page: 0 } : next); }} />
@@ -419,7 +421,7 @@ export default function AllocatedPage({ token, userRole, userType = 'human', cur
 
       {actionTicket && actionType && actionType !== ACTION_EDIT_METADATA ? (
         (() => {
-          const copy = getActionPanelCopy(actionType, actionTicket);
+           const copy = getActionPanelCopy(actionType, actionTicket, t);
           const isInitialReportAction = actionType === ACTION_EDIT_INITIAL;
           const isResolutionReportAction = actionType === ACTION_MODIFY || actionType === ACTION_CLOSE;
 

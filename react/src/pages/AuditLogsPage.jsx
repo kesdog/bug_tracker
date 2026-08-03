@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchAuditLogs } from '../api/auditLogs';
+import { useI18n } from '../i18n';
 
 function valueOrDash(value) {
   return value === null || value === undefined || value === '' ? '-' : String(value);
@@ -38,6 +39,7 @@ function getLogSummary(log) {
 }
 
 export default function AuditLogsPage({ token, initialFilters = {} }) {
+  const { t } = useI18n();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +60,7 @@ export default function AuditLogsPage({ token, initialFilters = {} }) {
       } catch (err) {
         if (isActive) {
           setLogs([]);
-          setError(err.message || 'Unable to load audit logs.');
+           setError(err.message || t('pages.auditLogs.errors.load', 'Unable to load audit logs.'));
         }
       } finally {
         if (isActive) {
@@ -85,49 +87,49 @@ export default function AuditLogsPage({ token, initialFilters = {} }) {
 
   return (
     <section className="dashboard">
-      <h2>Audit Logs</h2>
-      <p className="subtitle">Search human and AI-agent activity across ticket and account events.</p>
+       <h2>{t('pages.auditLogs.title', 'Audit Logs')}</h2>
+       <p className="subtitle">{t('pages.auditLogs.subtitle', 'Search human and AI-agent activity across ticket and account events.')}</p>
 
       <form className="ticket-tools audit-log-tools" onSubmit={submitSearch}>
         <div className="audit-filter-grid">
-          <label htmlFor="auditActorType">Actor type</label>
+           <label htmlFor="auditActorType">{t('pages.auditLogs.actorType', 'Actor type')}</label>
           <select id="auditActorType" value={filters.actorType} onChange={(event) => updateFilter('actorType', event.target.value)}>
-            <option value="all">All actors</option>
-            <option value="human">Human</option>
-            <option value="agent">Agent</option>
-            <option value="system">System</option>
+             <option value="all">{t('pages.auditLogs.allActors', 'All actors')}</option>
+             <option value="human">{t('pages.auditLogs.human', 'Human')}</option>
+             <option value="agent">{t('pages.auditLogs.agent', 'Agent')}</option>
+             <option value="system">{t('pages.auditLogs.system', 'System')}</option>
           </select>
 
-          <label htmlFor="auditSearch">Search logs</label>
-          <input id="auditSearch" value={filters.search} onChange={(event) => updateFilter('search', event.target.value)} placeholder="Actor, action, message..." />
+           <label htmlFor="auditSearch">{t('pages.auditLogs.searchLogs', 'Search logs')}</label>
+           <input id="auditSearch" value={filters.search} onChange={(event) => updateFilter('search', event.target.value)} placeholder={t('pages.auditLogs.searchPlaceholder', 'Actor, action, message...')} />
 
-          <label htmlFor="auditTicketId">Ticket ID</label>
+           <label htmlFor="auditTicketId">{t('pages.auditLogs.ticketId', 'Ticket ID')}</label>
           <input id="auditTicketId" value={filters.ticketId} onChange={(event) => updateFilter('ticketId', event.target.value)} placeholder="bug_123" />
 
-          <label htmlFor="auditAction">Action</label>
+           <label htmlFor="auditAction">{t('pages.auditLogs.action', 'Action')}</label>
           <input id="auditAction" value={filters.action} onChange={(event) => updateFilter('action', event.target.value)} placeholder="ticket.created" />
         </div>
 
         <div className="ticket-search-row audit-action-row">
-          <button type="submit" disabled={loading}>{loading ? 'Searching...' : 'Search Logs'}</button>
+           <button type="submit" disabled={loading}>{loading ? t('pages.auditLogs.searching', 'Searching...') : t('pages.auditLogs.search', 'Search Logs')}</button>
         </div>
       </form>
 
       {error ? <p role="alert" className="error-text">{error}</p> : null}
-      {loading ? <div className="spinner" aria-label="loading audit logs" /> : null}
-      {!loading && !error && logs.length === 0 ? <p className="dashboard-empty">No audit logs match this search.</p> : null}
+       {loading ? <div className="spinner" aria-label={t('pages.auditLogs.loading', 'loading audit logs')} /> : null}
+       {!loading && !error && logs.length === 0 ? <p className="dashboard-empty">{t('pages.auditLogs.empty', 'No audit logs match this search.')}</p> : null}
 
       {!loading && logs.length > 0 ? (
         <div className="bug-table-wrap">
           <table className="bug-table audit-log-table">
             <thead>
               <tr>
-                <th scope="col">Time</th>
-                <th scope="col">Actor</th>
-                <th scope="col">Actor Type</th>
-                <th scope="col">Action</th>
-                <th scope="col">Ticket ID</th>
-                <th scope="col">Summary</th>
+                <th scope="col">{t('pages.auditLogs.time', 'Time')}</th>
+                <th scope="col">{t('pages.auditLogs.actor', 'Actor')}</th>
+                <th scope="col">{t('pages.auditLogs.actorType', 'Actor Type')}</th>
+                <th scope="col">{t('pages.auditLogs.action', 'Action')}</th>
+                <th scope="col">{t('pages.auditLogs.ticketId', 'Ticket ID')}</th>
+                <th scope="col">{t('pages.auditLogs.summary', 'Summary')}</th>
               </tr>
             </thead>
             <tbody>

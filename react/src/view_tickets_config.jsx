@@ -23,30 +23,32 @@ export function getInitialReportText(ticket) {
   return ticket?.description || '';
 }
 
-export function buildActiveTicketColumns() {
+const defaultT = (_key, fallback) => fallback;
+
+export function buildActiveTicketColumns(t = defaultT) {
   return [
-    { key: 'issueTitle', label: 'Bug', sortable: true, defaultDirection: 'asc' },
-    { key: 'status', label: 'Status', sortable: true, defaultDirection: 'asc' },
-    { key: 'reporterUserId', label: 'Reported By', sortable: true, defaultDirection: 'asc' },
-    { key: 'assigneeUserId', label: 'Assignee', sortable: true, defaultDirection: 'asc' },
-    { key: 'assignedAt', label: 'Active Since', sortable: true, defaultDirection: 'desc' },
+    { key: 'issueTitle', label: t('tickets.columns.bug', 'Bug'), sortable: true, defaultDirection: 'asc' },
+    { key: 'status', label: t('tickets.columns.status', 'Status'), sortable: true, defaultDirection: 'asc' },
+    { key: 'reporterUserId', label: t('tickets.columns.reportedBy', 'Reported By'), sortable: true, defaultDirection: 'asc' },
+    { key: 'assigneeUserId', label: t('tickets.columns.assignee', 'Assignee'), sortable: true, defaultDirection: 'asc' },
+    { key: 'assignedAt', label: t('tickets.columns.activeSince', 'Active Since'), sortable: true, defaultDirection: 'desc' },
     {
       key: 'projectName',
-      label: 'Project',
+      label: t('tickets.columns.project', 'Project'),
       sortable: true,
       defaultDirection: 'asc',
       render: (ticket) => getProjectName(ticket)
     },
     {
       key: 'severity',
-      label: 'Severity',
+      label: t('tickets.columns.severity', 'Severity'),
       sortable: true,
       defaultDirection: 'desc',
       render: (ticket) => <SeverityChip value={ticket.severity} />
     },
     {
       key: 'priority',
-      label: 'Priority',
+      label: t('tickets.columns.priority', 'Priority'),
       sortable: true,
       defaultDirection: 'desc',
       render: renderPriority
@@ -54,32 +56,32 @@ export function buildActiveTicketColumns() {
   ];
 }
 
-export function buildTicketMenuItems({ canAllocate, canModifyFromView, canEditMetadata, canCloseFromView, openAllocate, openReport, openReportAction, setMetadataError, setMetadataTicket, openCloseFromView }) {
+export function buildTicketMenuItems({ canAllocate, canModifyFromView, canEditMetadata, canCloseFromView, openAllocate, openReport, openReportAction, setMetadataError, setMetadataTicket, openCloseFromView, t = defaultT }) {
   return [
     ...(canAllocate
       ? [
           {
             key: 'allocate-to',
-            label: 'Allocate To',
+            label: t('tickets.actions.allocateTo', 'Allocate To'),
             onSelect: openAllocate
           }
         ]
       : []),
     {
       key: 'view-report',
-      label: 'View Reports',
+      label: t('tickets.actions.viewReports', 'View Reports'),
       onSelect: openReport
     },
     ...(canModifyFromView
       ? [
           {
             key: ACTION_EDIT_INITIAL,
-            label: 'Edit Bug Report',
+            label: t('tickets.actions.editBugReport', 'Edit Bug Report'),
             onSelect: (ticket) => openReportAction(ticket, ACTION_EDIT_INITIAL)
           },
           {
             key: ACTION_SOLUTION,
-            label: (ticket) => hasSolutionReport(ticket) ? 'Modify Solution Steps' : 'Create Solution',
+            label: (ticket) => hasSolutionReport(ticket) ? t('tickets.actions.modifySolutionSteps', 'Modify Solution Steps') : t('tickets.actions.createSolution', 'Create Solution'),
             onSelect: (ticket) => openReportAction(ticket, ACTION_SOLUTION)
           }
         ]
@@ -88,7 +90,7 @@ export function buildTicketMenuItems({ canAllocate, canModifyFromView, canEditMe
       ? [
           {
             key: 'edit-metadata',
-            label: 'Edit Metadata',
+            label: t('tickets.actions.editMetadata', 'Edit Metadata'),
             onSelect: (ticket) => {
               setMetadataError('');
               setMetadataTicket(ticket);
@@ -100,7 +102,7 @@ export function buildTicketMenuItems({ canAllocate, canModifyFromView, canEditMe
       ? [
           {
             key: 'close-bug',
-            label: 'Close Bug',
+            label: t('tickets.actions.closeBug', 'Close Bug'),
             onSelect: openCloseFromView
           }
         ]

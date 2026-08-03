@@ -13,6 +13,7 @@ import { MAX_REPORT_TEXT_LENGTH, ReportBuilder } from '../report_builder';
 import ReportBuilderEditor from './ReportBuilderEditor';
 import { ConflictFieldNote, ConflictFieldResolution, ConflictNotice, ConflictSnapshotReview } from './ConcurrencyConflict';
 import { conflictFields as getConflictFields, hasConflictField } from '../concurrency';
+import { useI18n } from '../i18n';
 
 export default function BugReportFormPanel({
   ticket,
@@ -32,6 +33,7 @@ export default function BugReportFormPanel({
   onSubmit,
   onClose
 }) {
+  const { t } = useI18n();
   // Local block state starts from server-provided text/images.
   const [builder, setBuilder] = useState(() => ReportBuilder.fromSerialized(initialText || '', initialImages || []));
   const [builderError, setBuilderError] = useState('');
@@ -70,7 +72,7 @@ export default function BugReportFormPanel({
     }
 
     if (builder.textLength > MAX_REPORT_TEXT_LENGTH) {
-      setBuilderError(`Report text must be ${MAX_REPORT_TEXT_LENGTH.toLocaleString()} characters or less.`);
+      setBuilderError(t('reportForm.textTooLong', 'Report text must be {{count}} characters or less.', { count: MAX_REPORT_TEXT_LENGTH.toLocaleString() }));
       return;
     }
 
@@ -107,7 +109,7 @@ export default function BugReportFormPanel({
     <Dialog open onClose={onClose} aria-label={title} maxWidth="md" scroll="paper">
       <DialogTitle sx={{ pr: 7 }}>
         {title}
-        <IconButton type="button" className="report-close" aria-label="Close action form" onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}>
+        <IconButton type="button" className="report-close" aria-label={t('reportForm.close', 'Close action form')} onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -150,21 +152,21 @@ export default function BugReportFormPanel({
             <Alert severity="warning" variant="outlined" role="status">
               {actionStillValid ? (
                 <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-                  <span>The ticket is still active. Reconfirm that you want to close the latest version.</span>
+                  <span>{t('reportForm.closeStillValid', 'The ticket is still active. Reconfirm that you want to close the latest version.')}</span>
                   <Button type="button" size="small" variant={actionConfirmed ? 'contained' : 'outlined'} onClick={() => setActionConfirmed(true)}>
-                    {actionConfirmed ? 'Close reconfirmed' : 'Reconfirm close'}
+                    {actionConfirmed ? t('reportForm.closeReconfirmed', 'Close reconfirmed') : t('reportForm.reconfirmClose', 'Reconfirm close')}
                   </Button>
                 </Stack>
-              ) : 'This ticket is no longer active, so closing it is obsolete. Cancel this action and review the latest ticket.'}
+              ) : t('reportForm.closeObsolete', 'This ticket is no longer active, so closing it is obsolete. Cancel this action and review the latest ticket.')}
             </Alert>
           ) : null}
           {error && !conflict ? <Alert severity="error" role="alert">{error}</Alert> : null}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button type="button" variant="outlined" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outlined" onClick={onClose}>{t('common.cancel', 'Cancel')}</Button>
         <Button type="submit" form="bug-report-action-form" disabled={submitting || !currentPayload.text.trim() || unresolvedFields.length > 0 || (isActionConflict && (!actionConfirmed || !actionStillValid))}>
-          {submitting ? 'Saving...' : submitLabel}
+          {submitting ? t('common.saving', 'Saving...') : submitLabel}
         </Button>
       </DialogActions>
     </Dialog>

@@ -22,6 +22,7 @@ import {
 import { LoadingState } from '../components/MuiPrimitives';
 import ProjectAllocationsCard from '../components/ProjectAllocationsCard';
 import { formatUserIdentity } from '../user_identity';
+import { useI18n } from '../i18n';
 
 const ADD_PROJECT_OPTION = '__add_project__';
 
@@ -29,8 +30,8 @@ function normalizeVisibility(value) {
   return value === 'sensitive' ? 'sensitive' : 'normal';
 }
 
-function visibilityLabel(value) {
-  return normalizeVisibility(value) === 'sensitive' ? 'Sensitive' : 'Normal';
+function visibilityLabel(value, t) {
+  return normalizeVisibility(value) === 'sensitive' ? t('pages.projectManagement.sensitive', 'Sensitive') : t('pages.projectManagement.normal', 'Normal');
 }
 
 function formatProjectUser(user) {
@@ -42,6 +43,7 @@ function formatProjectUser(user) {
 }
 
 export default function ProjectManagementPage({ token, userRole, userType }) {
+  const { t } = useI18n();
   const isAdmin = userType !== 'agent' && userRole === 'admin';
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -120,7 +122,7 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
         setSelectedUserId((current) => current || normalizedUsers[0]?.userId || '');
       } catch (err) {
         if (active) {
-          setError(err.message || 'Unable to load project management data.');
+           setError(err.message || t('pages.projectManagement.errors.load', 'Unable to load project management data.'));
           setProjects([]);
           setUsers([]);
           setAllocationsByProject({});
@@ -158,12 +160,12 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
     event.preventDefault();
     const trimmed = newProjectName.trim();
     if (!trimmed) {
-      setNewProjectNameError('Project name is required.');
+       setNewProjectNameError(t('pages.projectManagement.errors.nameRequired', 'Project name is required.'));
       return;
     }
 
     if (trimmed.length > 50) {
-      setNewProjectNameError('Project name must be 50 characters or less.');
+       setNewProjectNameError(t('pages.projectManagement.errors.nameLength', 'Project name must be 50 characters or less.'));
       return;
     }
 
@@ -182,9 +184,9 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
       setNewProjectName('');
       setNewProjectNameError('');
       setNewProjectVisibility('normal');
-      setSuccessMessage(`Created ${visibility} project: ${created.name}`);
+       setSuccessMessage(`${t('pages.projectManagement.createdProject', 'Created')} ${visibilityLabel(visibility, t).toLowerCase()} ${t('pages.projectManagement.project', 'project')}: ${created.name}`);
     } catch (err) {
-      setError(err.message || 'Unable to create project.');
+       setError(err.message || t('pages.projectManagement.errors.create', 'Unable to create project.'));
     } finally {
       setCreatingProject(false);
     }
@@ -206,9 +208,9 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
           ? { ...project, ...updated, visibility }
           : project
       )));
-      setSuccessMessage(`${selectedProject.name} is now ${visibility}.`);
+       setSuccessMessage(`${selectedProject.name} ${t('pages.projectManagement.isNow', 'is now')} ${visibilityLabel(visibility, t).toLowerCase()}.`);
     } catch (err) {
-      setError(err.message || 'Unable to update project visibility.');
+       setError(err.message || t('pages.projectManagement.errors.updateVisibility', 'Unable to update project visibility.'));
     } finally {
       setSavingVisibility(false);
     }
@@ -220,7 +222,7 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
     }
 
     if (!selectedProject || !selectedUserId) {
-      setError('Select both a project and a user first.');
+       setError(t('pages.projectManagement.errors.selectProjectAndUser', 'Select both a project and a user first.'));
       return;
     }
 
@@ -230,7 +232,7 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
     try {
       const currentUserIds = selectedProjectUserIds;
       if (currentUserIds.includes(selectedUserId)) {
-        setError('This user is already allocated to that project.');
+         setError(t('pages.projectManagement.errors.userAlreadyAllocated', 'This user is already allocated to that project.'));
         return;
       }
 
@@ -240,9 +242,9 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
         ...current,
         [selectedProject.projectId]: nextUserIds
       }));
-      setSuccessMessage('User allocated to project.');
+       setSuccessMessage(t('pages.projectManagement.userAllocated', 'User allocated to project.'));
     } catch (err) {
-      setError(err.message || 'Unable to allocate user to project.');
+       setError(err.message || t('pages.projectManagement.errors.allocateUser', 'Unable to allocate user to project.'));
     } finally {
       setSaving(false);
     }
@@ -252,15 +254,15 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
 
   return (
     <Box component="section" className="dashboard">
-      <Typography component="h2" variant="h4">Project Management</Typography>
+       <Typography component="h2" variant="h4">{t('pages.projectManagement.title', 'Project Management')}</Typography>
       <Typography color="text.secondary" sx={{ mb: 2.5 }}>
-        Create projects, review visibility, and manage project membership.
+         {t('pages.projectManagement.subtitle', 'Create projects, review visibility, and manage project membership.')}
       </Typography>
 
       <Stack spacing={2}>
         {error ? <Alert severity="error" role="alert">{error}</Alert> : null}
         {successMessage ? <Alert severity="success" role="status">{successMessage}</Alert> : null}
-        {loading ? <LoadingState label="loading projects" /> : null}
+         {loading ? <LoadingState label={t('pages.projectManagement.loading', 'loading projects')} /> : null}
 
         {!loading ? (
           <Stack spacing={2.5}>
@@ -268,12 +270,12 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
               <CardContent>
                 <Stack spacing={2}>
                   <Box>
-                    <Typography component="h3" variant="h6">Project</Typography>
-                    <Typography variant="body2" color="text.secondary">Select a project to review access and settings.</Typography>
+                     <Typography component="h3" variant="h6">{t('pages.projectManagement.project', 'Project')}</Typography>
+                     <Typography variant="body2" color="text.secondary">{t('pages.projectManagement.selectProjectHelp', 'Select a project to review access and settings.')}</Typography>
                   </Box>
                   <TextField
                     id="projectSelect"
-                    label="Project"
+                     label={t('pages.projectManagement.project', 'Project')}
                     value={selectedProjectId}
                     onChange={(event) => setSelectedProjectId(event.target.value)}
                     disabled={controlsDisabled}
@@ -283,27 +285,27 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
                   >
                     {projects.map((project) => (
                       <option key={project.projectId} value={project.projectId}>
-                        {project.name} ({visibilityLabel(project.visibility)})
+                         {project.name} ({visibilityLabel(project.visibility, t)})
                       </option>
                     ))}
-                    <option value={ADD_PROJECT_OPTION}>+ Create new project...</option>
+                     <option value={ADD_PROJECT_OPTION}>{t('pages.projectManagement.createNewProjectOption', '+ Create new project...')}</option>
                   </TextField>
 
                   {selectedProjectId === ADD_PROJECT_OPTION ? (
                     <Stack component="form" onSubmit={handleCreateProject} spacing={2}>
                       <Divider />
-                      <Typography component="h3" variant="h6">Create project</Typography>
+                       <Typography component="h3" variant="h6">{t('pages.projectManagement.createProject', 'Create project')}</Typography>
                       <TextField
                         id="newProjectName"
-                        label="New project name"
+                         label={t('pages.projectManagement.newProjectName', 'New project name')}
                         value={newProjectName}
                         onChange={(event) => {
                           setNewProjectName(event.target.value);
                           setNewProjectNameError('');
                         }}
-                        placeholder="Project name (max 50 characters)"
+                         placeholder={t('pages.projectManagement.namePlaceholder', 'Project name (max 50 characters)')}
                         error={Boolean(newProjectNameError)}
-                        helperText={newProjectNameError || 'Use a concise name, up to 50 characters.'}
+                         helperText={newProjectNameError || t('pages.projectManagement.nameHelp', 'Use a concise name, up to 50 characters.')}
                         slotProps={{ htmlInput: { maxLength: 50 } }}
                         fullWidth
                       />
@@ -330,7 +332,7 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
                         </Alert>
                       ) : null}
                       <Button type="submit" disabled={creatingProject} sx={{ alignSelf: { sm: 'flex-start' } }}>
-                        {creatingProject ? 'Creating...' : 'Create Project'}
+                         {creatingProject ? t('common.creating', 'Creating...') : t('pages.projectManagement.createProject', 'Create Project')}
                       </Button>
                     </Stack>
                   ) : selectedProject ? (
@@ -339,7 +341,7 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}>
                          <Box>
                            <Typography component="h3" variant="h6">{selectedProject.name}</Typography>
-                           <Typography variant="body2" sx={{ fontWeight: 700 }}>Owner: {ownerIdentity ? formatProjectUser(ownerIdentity) : 'Not provided'}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>{t('pages.projectManagement.owner', 'Owner')}: {ownerIdentity ? formatProjectUser(ownerIdentity) : t('common.notProvided', 'Not provided')}</Typography>
                           <Typography variant="body2" color="text.secondary">
                             {selectedVisibility === 'sensitive'
                               ? 'Only explicitly allocated members can discover and work in this project.'
@@ -348,7 +350,7 @@ export default function ProjectManagementPage({ token, userRole, userType }) {
                         </Box>
                         <Chip
                           icon={selectedVisibility === 'sensitive' ? <LockOutlinedIcon /> : <PublicOutlinedIcon />}
-                          label={`${visibilityLabel(selectedVisibility)} project`}
+                           label={`${visibilityLabel(selectedVisibility, t)} ${t('pages.projectManagement.project', 'project')}`}
                           color={selectedVisibility === 'sensitive' ? 'warning' : 'success'}
                           variant="outlined"
                         />

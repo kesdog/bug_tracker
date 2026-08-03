@@ -9,8 +9,10 @@ import { createRequest, fetchRequests, fetchUsers, issueAgentApiKey, issuePasswo
 import { AccessRequestCard, RequestsGridCard, UsersGridCard } from '../components/UserManagementCards';
 import { ApiKeyDialog, EditUsernameDialog, PasswordLinkDialog } from '../components/UserManagementDialogs';
 import { isValidEmail } from '../user_management_utils';
+import { useI18n } from '../i18n';
 
 export default function UserManagementPage({ token, onViewUserLogs, onViewUserTickets, onViewUserSubmitted }) {
+  const { t } = useI18n();
   const [users, setUsers] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
       setUsers(Array.isArray(nextUsers) ? nextUsers : []);
       setRequests(Array.isArray(nextRequests) ? nextRequests : []);
     } catch (err) {
-      setError(err.message || 'Unable to load user management data.');
+       setError(err.message || t('pages.userManagement.errors.load', 'Unable to load user management data.'));
       setUsers([]);
       setRequests([]);
     } finally {
@@ -116,17 +118,17 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
     setSuccessMessage('');
 
     if (!normalizedEmail || !normalizedConfirm) {
-      setError('Email and confirm email are required.');
+       setError(t('pages.userManagement.errors.emailRequired', 'Email and confirm email are required.'));
       return;
     }
 
     if (normalizedEmail !== normalizedConfirm) {
-      setError('Email and confirm email must match.');
+       setError(t('pages.userManagement.errors.emailMatch', 'Email and confirm email must match.'));
       return;
     }
 
     if (!isValidEmail(normalizedEmail)) {
-      setError('Enter a valid email address.');
+       setError(t('pages.userManagement.errors.validEmail', 'Enter a valid email address.'));
       return;
     }
 
@@ -137,9 +139,9 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
       setEmail('');
       setEmailConfirm('');
       setActiveTab(created.requestType === 'ai_agent' ? 'ai_agent' : 'human');
-      setSuccessMessage('Request created.');
+       setSuccessMessage(t('pages.userManagement.requestCreated', 'Request created.'));
     } catch (err) {
-      setError(err.message || 'Unable to create request.');
+       setError(err.message || t('pages.userManagement.errors.createRequest', 'Unable to create request.'));
     } finally {
       setSaving(false);
     }
@@ -168,12 +170,12 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
         const result = await issueSetupLink(token, request.requestId);
         setGeneratedSetupLink({ link: result.link || '', email: request.email, expiresAt: result.expiresAt || '' });
         setCopyMessage('');
-        setSuccessMessage('Setup link generated. Copy or email it from the dialog.');
+         setSuccessMessage(t('pages.userManagement.setupLinkGenerated', 'Setup link generated. Copy or email it from the dialog.'));
       } else if (action === 'password-reset') {
         const result = await issuePasswordReset(token, request.requestId.replace(/^recovery_/, ''));
         setGeneratedSetupLink({ link: result.link || '', email: request.email, expiresAt: result.expiresAt || '' });
         setCopyMessage('');
-        setSuccessMessage('Password reset link generated. Copy or email it from the dialog.');
+         setSuccessMessage(t('pages.userManagement.passwordResetLinkGenerated', 'Password reset link generated. Copy or email it from the dialog.'));
       } else if (action === 'api-key') {
         setApiKeyRequest(request);
         setApiKeyActiveDays('30');
@@ -183,12 +185,12 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
       } else if (action === 'remove') {
         await removeRequest(token, request.requestId);
         setRequests((current) => current.filter((item) => item.requestId !== request.requestId));
-        setSuccessMessage('Request removed.');
+         setSuccessMessage(t('pages.userManagement.requestRemoved', 'Request removed.'));
       }
 
       await loadAll();
     } catch (err) {
-      setError(err.message || 'Action failed.');
+       setError(err.message || t('pages.userManagement.errors.actionFailed', 'Action failed.'));
     } finally {
       setSaving(false);
     }
@@ -208,7 +210,7 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
 
     const activeDays = Number.parseInt(apiKeyActiveDays, 10);
     if (!Number.isInteger(activeDays) || activeDays < 1 || activeDays > 62) {
-      setError('Active days must be between 1 and 62.');
+       setError(t('pages.userManagement.errors.activeDays', 'Active days must be between 1 and 62.'));
       return;
     }
 
@@ -228,10 +230,10 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
         email: apiKeyRequest.email,
         expiresAt: result.expiresAt || ''
       });
-      setSuccessMessage(apiKeyRequest.requestId ? 'AI oath token generated. It will only be shown in this dialog.' : 'AI oath token reissued. It will only be shown in this dialog.');
+       setSuccessMessage(apiKeyRequest.requestId ? t('pages.userManagement.oathTokenGenerated', 'AI oath token generated. It will only be shown in this dialog.') : t('pages.userManagement.oathTokenReissued', 'AI oath token reissued. It will only be shown in this dialog.'));
       await loadAll();
     } catch (err) {
-      setError(err.message || 'Unable to generate AI oath token.');
+       setError(err.message || t('pages.userManagement.errors.generateOathToken', 'Unable to generate AI oath token.'));
     } finally {
       setSaving(false);
     }
@@ -249,9 +251,9 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
       }
 
       await clipboard.writeText(generatedApiKey.apiKey);
-      setCopyMessage('Copied oath token.');
+       setCopyMessage(t('pages.userManagement.copiedOathToken', 'Copied oath token.'));
     } catch {
-      setCopyMessage('Copy failed. Select the token and copy it manually.');
+       setCopyMessage(t('pages.userManagement.copyTokenFailed', 'Copy failed. Select the token and copy it manually.'));
     }
   }
 
@@ -263,9 +265,9 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
         throw new Error('clipboard unavailable');
       }
       await clipboard.writeText(generatedSetupLink.link);
-      setCopyMessage('Copied password link.');
+       setCopyMessage(t('pages.userManagement.copiedPasswordLink', 'Copied password link.'));
     } catch {
-      setCopyMessage('Copy failed. Select the link and copy it manually.');
+       setCopyMessage(t('pages.userManagement.copyLinkFailed', 'Copy failed. Select the link and copy it manually.'));
     }
   }
 
@@ -276,7 +278,7 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
 
     const value = usernameInput.trim();
     if (!value) {
-      setError('Username is required.');
+       setError(t('pages.userManagement.errors.usernameRequired', 'Username is required.'));
       return;
     }
 
@@ -292,9 +294,9 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
       }
       setEditUsernameRequest(null);
       setUsernameInput('');
-      setSuccessMessage('Username updated.');
+       setSuccessMessage(t('pages.userManagement.usernameUpdated', 'Username updated.'));
     } catch (err) {
-      setError(err.message || 'Unable to update username.');
+       setError(err.message || t('pages.userManagement.errors.updateUsername', 'Unable to update username.'));
     } finally {
       setSaving(false);
     }
@@ -304,12 +306,12 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
 
   return (
     <section className="dashboard">
-      <Typography component="h2" variant="h4" sx={{ fontWeight: 900 }}>Users</Typography>
-      <Typography className="subtitle" color="text.secondary">Manage users, review access requests, and jump into user-scoped activity.</Typography>
+       <Typography component="h2" variant="h4" sx={{ fontWeight: 900 }}>{t('pages.userManagement.title', 'Users')}</Typography>
+       <Typography className="subtitle" color="text.secondary">{t('pages.userManagement.subtitle', 'Manage users, review access requests, and jump into user-scoped activity.')}</Typography>
 
-      <Tabs value={managementTab} onChange={(event, value) => setManagementTab(value)} aria-label="User management tabs" sx={{ mt: 2 }}>
-        <Tab value="users" label={`Users (${users.length})`} />
-        <Tab value="requests" label={`Requests (${requests.length})`} />
+       <Tabs value={managementTab} onChange={(event, value) => setManagementTab(value)} aria-label={t('pages.userManagement.tabsLabel', 'User management tabs')} sx={{ mt: 2 }}>
+         <Tab value="users" label={`${t('pages.userManagement.users', 'Users')} (${users.length})`} />
+         <Tab value="requests" label={`${t('pages.userManagement.requests', 'Requests')} (${requests.length})`} />
       </Tabs>
 
       {managementTab === 'requests' ? (
@@ -353,14 +355,14 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
         onClose={() => setUserMenuState(null)}
         anchorReference="anchorPosition"
         anchorPosition={userMenuState ? { top: userMenuState.y, left: userMenuState.x } : undefined}
-        slotProps={{ list: { 'aria-label': 'User actions' } }}
+         slotProps={{ list: { 'aria-label': t('pages.userManagement.userActions', 'User actions') } }}
       >
-        <MenuItem onClick={() => runUserAction('edit-username')}>Edit username</MenuItem>
-        {userMenuState?.user?.userType === 'agent' ? <MenuItem onClick={() => runUserAction('api-key')}>Reissue oath token</MenuItem> : null}
-        <MenuItem onClick={() => runUserAction('logs')}>See Logs</MenuItem>
-        <MenuItem onClick={() => runUserAction('active')}>Active Tickets</MenuItem>
-        <MenuItem onClick={() => runUserAction('solved')}>Solved Tickets</MenuItem>
-        <MenuItem onClick={() => runUserAction('submitted')}>Submitted</MenuItem>
+         <MenuItem onClick={() => runUserAction('edit-username')}>{t('pages.userManagement.editUsername', 'Edit username')}</MenuItem>
+         {userMenuState?.user?.userType === 'agent' ? <MenuItem onClick={() => runUserAction('api-key')}>{t('pages.userManagement.reissueOathToken', 'Reissue oath token')}</MenuItem> : null}
+         <MenuItem onClick={() => runUserAction('logs')}>{t('pages.userManagement.seeLogs', 'See Logs')}</MenuItem>
+         <MenuItem onClick={() => runUserAction('active')}>{t('pages.userManagement.activeTickets', 'Active Tickets')}</MenuItem>
+         <MenuItem onClick={() => runUserAction('solved')}>{t('pages.userManagement.solvedTickets', 'Solved Tickets')}</MenuItem>
+         <MenuItem onClick={() => runUserAction('submitted')}>{t('pages.userManagement.submitted', 'Submitted')}</MenuItem>
       </Menu>
 
       <Menu
@@ -368,7 +370,7 @@ export default function UserManagementPage({ token, onViewUserLogs, onViewUserTi
         onClose={() => setMenuState(null)}
         anchorReference="anchorPosition"
         anchorPosition={menuState ? { top: menuState.y, left: menuState.x } : undefined}
-        slotProps={{ list: { 'aria-label': 'Request actions' } }}
+         slotProps={{ list: { 'aria-label': t('pages.userManagement.requestActions', 'Request actions') } }}
       >
         {menuRequest?.purpose === 'credential_recovery' && menuRequest?.requestType === 'human' ? [
           <MenuItem key="password-reset" onClick={() => runAction('password-reset')}>Issue password reset link</MenuItem>

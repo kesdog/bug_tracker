@@ -10,8 +10,10 @@ import { createBug, fetchAssignableUsers } from '../api/bugs';
 import { createProject, fetchProjects } from '../api/projects';
 import { ADD_PROJECT_OPTION, CORE_TAG_VALUES, MAX_TEXT_EVIDENCE_FILES, buildCreatePayload, createInitialBugForm, fileToTextEvidence, validateForm } from '../add_bug_form';
 import { MAX_REPORT_TEXT_LENGTH, ReportBuilder } from '../report_builder';
+import { useI18n } from '../i18n';
 
 export default function AddBugPage({ token, userRole, userType, onCreated }) {
+  const { t } = useI18n();
   const isHuman = userType !== 'agent';
   const canCreateProject = isHuman && (userRole === 'senior' || userRole === 'admin');
   const canAssignTicket = isHuman && (userRole === 'senior' || userRole === 'admin');
@@ -70,7 +72,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
     }
 
     if (form.textEvidence.length >= MAX_TEXT_EVIDENCE_FILES) {
-      setTextEvidenceError(`Attach up to ${MAX_TEXT_EVIDENCE_FILES} text evidence files.`);
+       setTextEvidenceError(`${t('pages.addBug.attachUpTo', 'Attach up to')} ${MAX_TEXT_EVIDENCE_FILES} ${t('pages.addBug.textEvidenceFiles', 'text evidence files.')}`);
       return;
     }
 
@@ -82,7 +84,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
       }));
       setTextEvidenceError('');
     } catch (err) {
-      setTextEvidenceError(err.message || 'Unable to attach text evidence.');
+       setTextEvidenceError(err.message || t('pages.addBug.errors.attachTextEvidence', 'Unable to attach text evidence.'));
     }
   }
 
@@ -114,7 +116,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
       } catch (err) {
         if (active) {
           setProjects([]);
-          setSubmitError(err.message || 'Unable to load projects.');
+           setSubmitError(err.message || t('pages.addBug.errors.loadProjects', 'Unable to load projects.'));
         }
       } finally {
         if (active) {
@@ -150,7 +152,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
       .catch((err) => {
         if (active) {
           setAssignees([]);
-          setAssigneesError(err.message || 'Unable to load assignment targets.');
+           setAssigneesError(err.message || t('pages.addBug.errors.loadAssignmentTargets', 'Unable to load assignment targets.'));
         }
       })
       .finally(() => {
@@ -172,12 +174,12 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
 
     const trimmed = newProjectName.trim();
     if (!trimmed) {
-      setNewProjectNameError('Project name is required.');
+       setNewProjectNameError(t('pages.addBug.errors.projectNameRequired', 'Project name is required.'));
       return;
     }
 
     if (trimmed.length > 50) {
-      setNewProjectNameError('Project name must be 50 characters or less.');
+       setNewProjectNameError(t('pages.addBug.errors.projectNameLength', 'Project name must be 50 characters or less.'));
       return;
     }
 
@@ -192,9 +194,9 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
       setNewProjectNameError('');
       setNewProjectVisibility('normal');
       setForm((current) => ({ ...current, projectId: created.projectId, assigneeUserId: '' }));
-      setSuccessMessage(`Project created: ${created.name}`);
+       setSuccessMessage(`${t('pages.addBug.projectCreated', 'Project created')}: ${created.name}`);
     } catch (err) {
-      setSubmitError(err.message || 'Unable to create project.');
+       setSubmitError(err.message || t('pages.addBug.errors.createProject', 'Unable to create project.'));
     } finally {
       setCreatingProject(false);
     }
@@ -208,7 +210,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
 
     const reportPayload = reportBuilder.toPayload();
     if (reportBuilder.textLength > MAX_REPORT_TEXT_LENGTH) {
-      setReportBuilderError(`Report text must be ${MAX_REPORT_TEXT_LENGTH.toLocaleString()} characters or less.`);
+       setReportBuilderError(`${t('pages.addBug.reportTextMustBe', 'Report text must be')} ${MAX_REPORT_TEXT_LENGTH.toLocaleString()} ${t('pages.addBug.charactersOrLess', 'characters or less.')}`);
       return;
     }
     const nextForm = {
@@ -226,7 +228,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
     try {
       const created = await createBug(token, buildCreatePayload(form, reportBuilder));
 
-      setSuccessMessage(`Bug created: ${created.id}`);
+       setSuccessMessage(`${t('pages.addBug.bugCreated', 'Bug created')}: ${created.id}`);
       setForm((current) => createInitialBugForm(current.projectId));
       setReportBuilder(ReportBuilder.fromSerialized('', []));
       setReportBuilderError('');
@@ -236,7 +238,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
         onCreated();
       }
     } catch (err) {
-      setSubmitError(err.message || 'Unable to create bug.');
+       setSubmitError(err.message || t('pages.addBug.errors.createBug', 'Unable to create bug.'));
     } finally {
       setSubmitting(false);
     }
@@ -244,8 +246,8 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
 
   return (
     <section className="dashboard">
-      <Typography component="h2" variant="h4">Add Bug</Typography>
-      <Typography className="subtitle">Capture a new issue with report notes, images, and project metadata.</Typography>
+       <Typography component="h2" variant="h4">{t('pages.addBug.title', 'Add Bug')}</Typography>
+       <Typography className="subtitle">{t('pages.addBug.subtitle', 'Capture a new issue with report notes, images, and project metadata.')}</Typography>
 
       <Card className="add-bug-card">
         <CardContent>
@@ -261,7 +263,7 @@ export default function AddBugPage({ token, userRole, userType, onCreated }) {
         <TicketMetadataAndEvidenceFields form={form} errors={errors} selectedCoreTag={selectedCoreTag} textEvidenceError={textEvidenceError} submitting={submitting} onFieldChange={updateField} onCoreTagChange={updateCoreTag} onRemoveEvidence={removeTextEvidence} onAddEvidence={addTextEvidence} />
 
         <Button type="submit" disabled={submitting} size="large">
-          {submitting ? 'Creating...' : 'Create Bug'}
+           {submitting ? t('pages.addBug.creating', 'Creating...') : t('pages.addBug.create', 'Create Bug')}
         </Button>
           </Box>
         </CardContent>

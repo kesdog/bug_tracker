@@ -6,12 +6,14 @@ import ReportPanel from '../components/ReportPanel';
 import TicketTable from '../components/TicketTable';
 import useTicketReport from '../hooks/useTicketReport';
 import { clearReviewedConflictFields, recoverTicketConflict } from '../concurrency';
+import { useI18n } from '../i18n';
 
 function getInitialReportText(ticket) {
   return ticket?.description || '';
 }
 
 export default function SubmittedReportsPage({ token, currentUserId }) {
+  const { t } = useI18n();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +43,7 @@ export default function SubmittedReportsPage({ token, currentUserId }) {
       } catch (err) {
         if (isActive) {
           setTickets([]);
-          setError(err.message || 'Unable to load submitted tickets.');
+           setError(err.message || t('pages.submittedReports.errors.loadTickets', 'Unable to load submitted tickets.'));
         }
       } finally {
         if (isActive) {
@@ -63,7 +65,7 @@ export default function SubmittedReportsPage({ token, currentUserId }) {
     try {
       setEditTicket(await fetchBugById(token, ticket.id));
     } catch (err) {
-      setError(err.message || 'Unable to load ticket details.');
+       setError(err.message || t('pages.submittedReports.errors.loadTicketDetails', 'Unable to load ticket details.'));
     }
   }
 
@@ -83,7 +85,7 @@ export default function SubmittedReportsPage({ token, currentUserId }) {
       if (recovered) {
         setEditConflict(recovered);
       } else {
-        setEditError(err.message || 'Unable to edit submitted report.');
+         setEditError(err.message || t('pages.submittedReports.errors.editReport', 'Unable to edit submitted report.'));
       }
     } finally {
       setEditSubmitting(false);
@@ -91,26 +93,26 @@ export default function SubmittedReportsPage({ token, currentUserId }) {
   }
 
   const columns = [
-    { key: 'issueTitle', label: 'Title', sortable: true, defaultDirection: 'asc' },
-    { key: 'status', label: 'Status', sortable: true, defaultDirection: 'asc' },
-    { key: 'assigneeUserId', label: 'Assignee', sortable: true, defaultDirection: 'asc' },
-    { key: 'severity', label: 'Severity', sortable: true, defaultDirection: 'desc', render: (ticket) => <SeverityChip value={ticket.severity} /> },
-    { key: 'priority', label: 'Priority', sortable: true, defaultDirection: 'desc', render: (ticket) => <PriorityChip value={ticket.priority} /> }
+    { key: 'issueTitle', label: t('common.title', 'Title'), sortable: true, defaultDirection: 'asc' },
+    { key: 'status', label: t('common.status', 'Status'), sortable: true, defaultDirection: 'asc' },
+    { key: 'assigneeUserId', label: t('common.assignee', 'Assignee'), sortable: true, defaultDirection: 'asc' },
+    { key: 'severity', label: t('common.severity', 'Severity'), sortable: true, defaultDirection: 'desc', render: (ticket) => <SeverityChip value={ticket.severity} /> },
+    { key: 'priority', label: t('common.priority', 'Priority'), sortable: true, defaultDirection: 'desc', render: (ticket) => <PriorityChip value={ticket.priority} /> }
   ];
 
   const rowMenuItems = [
-    { key: 'view-details', label: 'View Reports', onSelect: report.openReport },
-    { key: 'edit-report', label: 'Edit', shouldShow: (ticket) => ticket.status !== 'closed', onSelect: openEdit }
+    { key: 'view-details', label: t('common.viewReports', 'View Reports'), onSelect: report.openReport },
+    { key: 'edit-report', label: t('common.edit', 'Edit'), shouldShow: (ticket) => ticket.status !== 'closed', onSelect: openEdit }
   ];
 
   return (
     <section className="dashboard">
-      <h2>Submitted Reports</h2>
-      <p className="subtitle">Track every bug report you submitted and open details or edits from the row menu.</p>
+       <h2>{t('pages.submittedReports.title', 'Submitted Reports')}</h2>
+       <p className="subtitle">{t('pages.submittedReports.subtitle', 'Track every bug report you submitted and open details or edits from the row menu.')}</p>
 
       {error ? <p role="alert" className="error-text">{error}</p> : null}
-      {loading ? <div className="spinner" aria-label="loading submitted reports" /> : null}
-      {!loading && !error && tickets.length === 0 ? <p className="dashboard-empty">No submitted reports yet.</p> : null}
+       {loading ? <div className="spinner" aria-label={t('pages.submittedReports.loading', 'loading submitted reports')} /> : null}
+       {!loading && !error && tickets.length === 0 ? <p className="dashboard-empty">{t('pages.submittedReports.empty', 'No submitted reports yet.')}</p> : null}
 
       {!loading && tickets.length > 0 ? (
         <TicketTable tickets={tickets} columns={columns} defaultSort={{ key: 'status', direction: 'asc' }} rowMenuItems={rowMenuItems} />
@@ -131,9 +133,9 @@ export default function SubmittedReportsPage({ token, currentUserId }) {
       {editTicket ? (
         <BugReportFormPanel
           ticket={editTicket}
-          title="Edit Bug Report"
-          submitLabel="Save Bug Report"
-          notesLabel="Bug Report"
+           title={t('pages.submittedReports.editBugReport', 'Edit Bug Report')}
+           submitLabel={t('pages.submittedReports.saveBugReport', 'Save Bug Report')}
+           notesLabel={t('pages.submittedReports.bugReport', 'Bug Report')}
           initialText={getInitialReportText(editTicket)}
           initialImages={editTicket.reportImages || []}
           submitting={editSubmitting}

@@ -13,8 +13,10 @@ import CloseIcon from '@mui/icons-material/Close';
 import { formatUserIdentity } from '../user_identity';
 import { ConflictFieldNote, ConflictFieldResolution, ConflictNotice, ConflictSnapshotReview } from './ConcurrencyConflict';
 import { conflictFields, hasConflictField } from '../concurrency';
+import { useI18n } from '../i18n';
 
 export default function AllocatePanel({ ticket, latestTicket = null, users, selectedAssignee, loading = false, submitting = false, error = '', conflict = null, conflictRefreshError = '', onConflictReview, onAssigneeChange, onAllocate, onClose }) {
+  const { t } = useI18n();
   const [reconfirmed, setReconfirmed] = useState(false);
 
   useEffect(() => setReconfirmed(false), [conflict?.currentVersion]);
@@ -28,21 +30,21 @@ export default function AllocatePanel({ ticket, latestTicket = null, users, sele
   const unresolved = conflictFields(conflict);
 
   return (
-    <Dialog open onClose={onClose} aria-label="Allocate ticket" maxWidth="sm">
+    <Dialog open onClose={onClose} aria-label={t('tickets.allocate.ariaLabel', 'Allocate ticket')} maxWidth="sm">
       <DialogTitle sx={{ pr: 7 }}>
-        Allocate Ticket
-        <IconButton type="button" className="report-close" aria-label="Close allocate panel" onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}>
+        {t('tickets.allocate.title', 'Allocate Ticket')}
+        <IconButton type="button" className="report-close" aria-label={t('tickets.allocate.close', 'Close allocate panel')} onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
       <DialogContent dividers>
         <Typography className="report-ticket-title" color="text.secondary" sx={{ mb: 2 }}>{ticket.issueTitle}</Typography>
-        {loading ? <CircularProgress aria-label="loading assignees" size={24} /> : null}
+        {loading ? <CircularProgress aria-label={t('tickets.allocate.loadingAssignees', 'loading assignees')} size={24} /> : null}
         <ConflictNotice conflict={conflict} refreshError={conflictRefreshError} />
         {error && !conflict ? <Alert severity="error" role="alert" sx={{ my: 1 }}>{error}</Alert> : null}
         {!loading ? (
           <Stack component="form" id="allocate-form" className="allocate-form" spacing={2} onSubmit={onAllocate}>
-            <label htmlFor="allocate-assignee">Allocate To</label>
+            <label htmlFor="allocate-assignee">{t('tickets.actions.allocateTo', 'Allocate To')}</label>
             <select
               id="allocate-assignee"
               value={selectedAssignee}
@@ -51,7 +53,7 @@ export default function AllocatePanel({ ticket, latestTicket = null, users, sele
               className={hasConflictField(conflict, 'assigneeUserId') ? 'conflict-field' : undefined}
               aria-describedby={hasConflictField(conflict, 'assigneeUserId') ? 'allocate-assignee-conflict' : undefined}
             >
-              <option value="">Select a developer</option>
+              <option value="">{t('tickets.allocate.selectDeveloper', 'Select a developer')}</option>
               {users.map((user) => <option key={user.userId} value={user.userId}>{formatUserIdentity(user)}</option>)}
             </select>
             <ConflictFieldNote conflict={conflict} fields="assigneeUserId" id="allocate-assignee-conflict" />
@@ -70,18 +72,18 @@ export default function AllocatePanel({ ticket, latestTicket = null, users, sele
               <Alert severity="warning" variant="outlined" role="status">
                 {actionStillValid ? (
                   <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-                    <span>Assignment is still available. Reconfirm assignment against the latest ticket.</span>
-                    <Button type="button" size="small" variant={reconfirmed ? 'contained' : 'outlined'} onClick={() => setReconfirmed(true)}>{reconfirmed ? 'Assignment reconfirmed' : 'Reconfirm assignment'}</Button>
+                    <span>{t('tickets.allocate.stillAvailable', 'Assignment is still available. Reconfirm assignment against the latest ticket.')}</span>
+                    <Button type="button" size="small" variant={reconfirmed ? 'contained' : 'outlined'} onClick={() => setReconfirmed(true)}>{reconfirmed ? t('tickets.allocate.reconfirmed', 'Assignment reconfirmed') : t('tickets.allocate.reconfirm', 'Reconfirm assignment')}</Button>
                   </Stack>
-                ) : 'This ticket is no longer active, so assignment is obsolete.'}
+                ) : t('tickets.allocate.obsolete', 'This ticket is no longer active, so assignment is obsolete.')}
               </Alert>
             ) : null}
           </Stack>
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button type="button" variant="outlined" onClick={onClose}>Cancel</Button>
-        <Button type="submit" form="allocate-form" disabled={submitting || !selectedAssignee || unresolved.length > 0 || (Boolean(conflict) && (!reconfirmed || !actionStillValid))}>{submitting ? 'Attributing...' : 'Attribute'}</Button>
+        <Button type="button" variant="outlined" onClick={onClose}>{t('common.cancel', 'Cancel')}</Button>
+        <Button type="submit" form="allocate-form" disabled={submitting || !selectedAssignee || unresolved.length > 0 || (Boolean(conflict) && (!reconfirmed || !actionStillValid))}>{submitting ? t('tickets.allocate.submitting', 'Attributing...') : t('tickets.allocate.submit', 'Attribute')}</Button>
       </DialogActions>
     </Dialog>
   );

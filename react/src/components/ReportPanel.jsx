@@ -21,6 +21,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { downloadBugAttachment, requestTicketAccess } from '../api/bugs';
 import { ActivityTimeline, ContactAction, MetadataBadges, ReportSection, StructuredReportDetails, TextEvidenceSection, TicketFocusCard } from './ReportPanelContent';
 import { getActiveDurationLabel, getInitialReportImages, getInitialReportText, getSolutionReportImages, getSolutionReportText, hasReportContent, identityFrom, identityLabel } from './reportPanelUtils';
+import { useI18n } from '../i18n';
 
 export default function ReportPanel({
   ticket,
@@ -35,12 +36,13 @@ export default function ReportPanel({
   token = '',
   userType = 'human'
 }) {
+  const { t } = useI18n();
   const [activeReportId, setActiveReportId] = useState('initial');
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
   const [commentRecipient, setCommentRecipient] = useState(null);
-  const [accessReason, setAccessReason] = useState('Please grant access so I can review and help resolve this ticket.');
+  const [accessReason, setAccessReason] = useState(() => t('reports.accessRequest.defaultReason', 'Please grant access so I can review and help resolve this ticket.'));
   const [accessState, setAccessState] = useState({ submitting: false, message: '', error: '' });
   const commentInputRef = useRef(null);
   const [downloadingIds, setDownloadingIds] = useState(() => new Set());
@@ -63,18 +65,18 @@ export default function ReportPanel({
   const attachments = Array.isArray(ticket?.attachments) ? ticket.attachments : [];
   const reportSections = ticket ? [
     {
-      id: 'initial', label: 'Initial Bug Report', dateLabel: 'Submitted', date: ticket.createdAt,
+       id: 'initial', label: t('reports.initial.title', 'Initial Bug Report'), dateLabel: t('reports.initial.submitted', 'Submitted'), date: ticket.createdAt,
       text: getInitialReportText(ticket), images: getInitialReportImages(ticket),
-      emptyMessage: 'No initial bug report is available for this ticket.',
+       emptyMessage: t('reports.initial.empty', 'No initial bug report is available for this ticket.'),
       attachments: attachments.filter((attachment) => attachment.purpose === 'initial-report'),
-      attachmentLabel: 'Initial report attachments'
+       attachmentLabel: t('reports.initial.attachments', 'Initial report attachments')
     },
     {
-      id: 'solution', label: 'Solution / Fix Report', dateLabel: ticket.closeDate ? 'Resolved' : 'Updated', date: ticket.closeDate || ticket.updatedAt,
+       id: 'solution', label: t('reports.solution.title', 'Solution / Fix Report'), dateLabel: ticket.closeDate ? t('reports.solution.resolved', 'Resolved') : t('common.updated', 'Updated'), date: ticket.closeDate || ticket.updatedAt,
       text: getSolutionReportText(ticket), images: getSolutionReportImages(ticket),
-      emptyMessage: 'No solution or fix report has been added yet.',
+       emptyMessage: t('reports.solution.empty', 'No solution or fix report has been added yet.'),
       attachments: attachments.filter((attachment) => attachment.purpose === 'solution-report' || attachment.purpose === 'close-report'),
-      attachmentLabel: 'Solution / close attachments'
+       attachmentLabel: t('reports.solution.attachments', 'Solution / close attachments')
     }
   ] : [];
   const activeSection = reportSections.find((section) => section.id === activeReportId) || reportSections[0];
@@ -94,7 +96,7 @@ export default function ReportPanel({
       link.remove();
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      setDownloadError(err.message || 'Unable to download attachment.');
+      setDownloadError(err.message || t('reports.download.error', 'Unable to download attachment.'));
     } finally {
       setDownloadingIds((current) => {
         const next = new Set(current);
@@ -114,7 +116,7 @@ export default function ReportPanel({
       setCommentText('');
       setCommentRecipient(null);
     } catch (err) {
-      setCommentError(err.message || 'Unable to add comment.');
+      setCommentError(err.message || t('reports.comments.error', 'Unable to add comment.'));
     } finally {
       setCommentSubmitting(false);
     }
@@ -133,9 +135,9 @@ export default function ReportPanel({
     setAccessState({ submitting: true, message: '', error: '' });
     try {
       await requestTicketAccess(token, path, accessReason.trim());
-      setAccessState({ submitting: false, message: 'Project access request submitted.', error: '' });
+      setAccessState({ submitting: false, message: t('reports.accessRequest.success', 'Project access request submitted.'), error: '' });
     } catch (err) {
-      setAccessState({ submitting: false, message: '', error: err.message || 'Unable to request access.' });
+      setAccessState({ submitting: false, message: '', error: err.message || t('reports.accessRequest.error', 'Unable to request access.') });
     }
   }
 
@@ -150,18 +152,18 @@ export default function ReportPanel({
       <DialogTitle id="report-panel-title" sx={{ pr: 7 }}>
         <Typography component="span" variant="h5" sx={{ fontWeight: 900 }}>{title}</Typography>
         {ticket ? <Typography className="report-ticket-title" color="text.secondary">{ticket.issueTitle}</Typography> : null}
-        {!showReportTabs && ticket ? <Typography className="report-open-since" variant="body2" color="text.secondary">Active Time: {activeDurationLabel}</Typography> : null}
-        <IconButton type="button" className="report-close" aria-label="Close report" onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}><CloseIcon /></IconButton>
+        {!showReportTabs && ticket ? <Typography className="report-open-since" variant="body2" color="text.secondary">{t('tickets.activeTime', 'Active Time')}: {activeDurationLabel}</Typography> : null}
+        <IconButton type="button" className="report-close" aria-label={t('reports.close', 'Close report')} onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}><CloseIcon /></IconButton>
       </DialogTitle>
       <DialogContent dividers>
-        {loading ? <CircularProgress aria-label="loading report details" size={24} /> : null}
+        {loading ? <CircularProgress aria-label={t('reports.loading', 'loading report details')} size={24} /> : null}
         {errorMessage ? <Alert severity="error" role="alert" sx={{ my: 1 }}>{errorMessage}</Alert> : null}
         {permissionPayload ? (
           <Card variant="outlined" component="section" aria-label="Ticket access help" sx={{ my: 2 }}><CardContent>
-            <Typography component="h3" variant="h6">You do not currently have access</Typography>
+            <Typography component="h3" variant="h6">{t('reports.accessDenied.title', 'You do not currently have access')}</Typography>
             {Array.isArray(permissionPayload.steps) && permissionPayload.steps.length > 0 ? <Box component="ol">{permissionPayload.steps.map((step) => <li key={step}>{step}</li>)}</Box> : null}
-            {Array.isArray(permissionPayload.contacts) && permissionPayload.contacts.length > 0 ? <Typography>Contact: {permissionPayload.contacts.map((contact) => `${identityLabel(contact)}${contact.role ? ` (${contact.role})` : ''}`).join(', ')}</Typography> : null}
-            {userType !== 'agent' && permissionPayload.requestAccessPath ? <Stack spacing={1.25} sx={{ mt: 2 }}><TextField label="Access request reason" value={accessReason} onChange={(event) => setAccessReason(event.target.value)} multiline rows={2} /><Button onClick={submitAccessRequest} disabled={accessState.submitting || !accessReason.trim()}>{accessState.submitting ? 'Requesting…' : 'Request project access'}</Button></Stack> : null}
+            {Array.isArray(permissionPayload.contacts) && permissionPayload.contacts.length > 0 ? <Typography>{t('reports.accessDenied.contact', 'Contact')}: {permissionPayload.contacts.map((contact) => `${identityLabel(contact)}${contact.role ? ` (${contact.role})` : ''}`).join(', ')}</Typography> : null}
+            {userType !== 'agent' && permissionPayload.requestAccessPath ? <Stack spacing={1.25} sx={{ mt: 2 }}><TextField label={t('reports.accessRequest.reason', 'Access request reason')} value={accessReason} onChange={(event) => setAccessReason(event.target.value)} multiline rows={2} /><Button onClick={submitAccessRequest} disabled={accessState.submitting || !accessReason.trim()}>{accessState.submitting ? t('reports.accessRequest.requesting', 'Requesting…') : t('reports.accessRequest.submit', 'Request project access')}</Button></Stack> : null}
             {accessState.message ? <Alert severity="success" sx={{ mt: 1 }}>{accessState.message}</Alert> : null}
             {accessState.error ? <Alert severity="error" sx={{ mt: 1 }}>{accessState.error}</Alert> : null}
           </CardContent></Card>
@@ -170,9 +172,9 @@ export default function ReportPanel({
           <>
             {showReportTabs ? <TicketFocusCard ticket={ticket} activeDurationLabel={activeDurationLabel} onContactInTicket={contactInTicket} /> : (
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} className="report-meta" sx={{ alignItems: { sm: 'center' }, flexWrap: 'wrap' }}>
-                <Stack component="span" direction="row" spacing={0.5} sx={{ alignItems: 'center' }}><span>Reported By: {identityLabel(reporter)}</span><ContactAction identity={reporter} ticket={ticket} onContactInTicket={contactInTicket} /></Stack>
-                <Stack component="span" direction="row" spacing={0.5} sx={{ alignItems: 'center' }}><span>Assigned: {ticket.assigneeUserId ? identityLabel(assignee) : '-'}</span><ContactAction identity={assignee} ticket={ticket} onContactInTicket={contactInTicket} /></Stack>
-                <span>Status: {ticket.status || '-'}</span>
+                <Stack component="span" direction="row" spacing={0.5} sx={{ alignItems: 'center' }}><span>{t('tickets.reportedBy', 'Reported By')}: {identityLabel(reporter)}</span><ContactAction identity={reporter} ticket={ticket} onContactInTicket={contactInTicket} /></Stack>
+                <Stack component="span" direction="row" spacing={0.5} sx={{ alignItems: 'center' }}><span>{t('tickets.assigned', 'Assigned')}: {ticket.assigneeUserId ? identityLabel(assignee) : '-'}</span><ContactAction identity={assignee} ticket={ticket} onContactInTicket={contactInTicket} /></Stack>
+                <span>{t('tickets.status', 'Status')}: {ticket.status || '-'}</span>
               </Stack>
             )}
             <MetadataBadges ticket={ticket} />
@@ -187,16 +189,16 @@ export default function ReportPanel({
             <ActivityTimeline ticket={ticket} activity={ticket.activity} onContactInTicket={contactInTicket} />
             {onAddComment ? (
               <form className="comment-form" onSubmit={submitComment}>
-                <TextField id={`comment-${ticket.id}`} inputRef={commentInputRef} label="Add comment" value={commentText} onChange={(event) => setCommentText(event.target.value)} rows={3} multiline fullWidth placeholder="Add a plain-text update for this ticket" slotProps={{ htmlInput: { maxLength: 2000 } }} />
-                {commentRecipient ? <Typography variant="caption" color="text.secondary">Sending this comment to {identityLabel(commentRecipient)}.</Typography> : null}
-                <Button type="submit" disabled={commentSubmitting || !commentText.trim()} sx={{ mt: 1 }}>{commentSubmitting ? 'Adding...' : 'Add Comment'}</Button>
+                <TextField id={`comment-${ticket.id}`} inputRef={commentInputRef} label={t('reports.comments.add', 'Add comment')} value={commentText} onChange={(event) => setCommentText(event.target.value)} rows={3} multiline fullWidth placeholder={t('reports.comments.placeholder', 'Add a plain-text update for this ticket')} slotProps={{ htmlInput: { maxLength: 2000 } }} />
+                {commentRecipient ? <Typography variant="caption" color="text.secondary">{t('reports.comments.sendingTo', 'Sending this comment to {{recipient}}.', { recipient: identityLabel(commentRecipient) })}</Typography> : null}
+                <Button type="submit" disabled={commentSubmitting || !commentText.trim()} sx={{ mt: 1 }}>{commentSubmitting ? t('reports.comments.adding', 'Adding...') : t('reports.comments.add', 'Add Comment')}</Button>
                 {commentError ? <Alert severity="error" role="alert" sx={{ mt: 1 }}>{commentError}</Alert> : null}
               </form>
             ) : null}
           </>
         ) : null}
       </DialogContent>
-      <DialogActions><Button type="button" variant="outlined" onClick={onClose}>Close</Button></DialogActions>
+      <DialogActions><Button type="button" variant="outlined" onClick={onClose}>{t('common.close', 'Close')}</Button></DialogActions>
     </Dialog>
   );
 }

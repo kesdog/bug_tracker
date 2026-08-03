@@ -9,8 +9,10 @@ import { ACTION_EDIT_INITIAL, ACTION_SOLUTION, EMPTY_FILTERS, buildActiveTicketC
 import { bulkConflictsFromError, bulkConflictsFromResult, recoverTicketConflict } from '../concurrency';
 import { writeAppUrlState } from '../url_state';
 import { filterTicketsByQuickFilter } from '../viewTicketsHelpers';
+import { useI18n } from '../i18n';
 
 export default function ViewTicketsPage({ token, userRole, userType = 'human', currentUserId = '', initialFilters = EMPTY_FILTERS, initialSearch = '', initialQuickFilter = 'all', initialTicketId = '' }) {
+  const { t } = useI18n();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +83,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       setAssignees(Array.isArray(users) ? users : []);
     } catch (err) {
       setAssignees([]);
-      setAllocateError(err.message || 'Unable to load users.');
+       setAllocateError(err.message || t('pages.viewTickets.errors.loadUsers', 'Unable to load users.'));
     } finally {
       setAllocateLoading(false);
     }
@@ -99,7 +101,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       setAssignees(Array.isArray(users) ? users : []);
     } catch (err) {
       setAssignees([]);
-      setBulkError(err.message || 'Unable to load users.');
+       setBulkError(err.message || t('pages.viewTickets.errors.loadUsers', 'Unable to load users.'));
     } finally {
       setBulkLoading(false);
     }
@@ -125,7 +127,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       if (recovered) {
         setAllocateConflict(recovered);
       } else {
-        setAllocateError(err.message || 'Unable to allocate ticket.');
+         setAllocateError(err.message || t('pages.viewTickets.errors.allocateTicket', 'Unable to allocate ticket.'));
       }
     } finally {
       setAllocateSubmitting(false);
@@ -145,7 +147,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       const fullTicket = await fetchBugById(token, ticket.id);
       setActionTicket(fullTicket);
     } catch (err) {
-      setError(err.message || 'Unable to load ticket details.');
+       setError(err.message || t('pages.viewTickets.errors.loadTicketDetails', 'Unable to load ticket details.'));
     }
   }
 
@@ -168,7 +170,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
         setCancelTicket(fullTicket);
       }
     } catch (err) {
-      setError(err.message || 'Unable to load ticket details.');
+       setError(err.message || t('pages.viewTickets.errors.loadTicketDetails', 'Unable to load ticket details.'));
     }
   }
 
@@ -182,7 +184,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       setCancelTicket(null);
       setReloadKey((value) => value + 1);
     } catch (err) {
-      setCancelError(err.message || 'Unable to cancel ticket.');
+       setCancelError(err.message || t('pages.viewTickets.errors.cancelTicket', 'Unable to cancel ticket.'));
     } finally {
       setCancelSubmitting(false);
     }
@@ -209,7 +211,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       if (recovered) {
         setActionConflict(recovered);
       } else {
-        setActionError(err.message || 'Unable to modify bug report.');
+         setActionError(err.message || t('pages.viewTickets.errors.modifyBugReport', 'Unable to modify bug report.'));
       }
     } finally {
       setActionSubmitting(false);
@@ -233,7 +235,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       if (recovered) {
         setCloseConflict(recovered);
       } else {
-        setCloseError(err.message || 'Unable to close bug.');
+         setCloseError(err.message || t('pages.viewTickets.errors.closeBug', 'Unable to close bug.'));
       }
     } finally {
       setCloseSubmitting(false);
@@ -256,7 +258,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       if (recovered) {
         setMetadataConflict(recovered);
       } else {
-        setMetadataError(err.message || 'Unable to update ticket metadata.');
+         setMetadataError(err.message || t('pages.viewTickets.errors.updateTicketMetadata', 'Unable to update ticket metadata.'));
       }
     } finally {
       setMetadataSubmitting(false);
@@ -356,7 +358,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
       } catch (err) {
         if (isActive) {
           setTickets([]);
-          setError(err.message || 'Unable to load tickets.');
+           setError(err.message || t('pages.viewTickets.errors.loadTickets', 'Unable to load tickets.'));
         }
       } finally {
         if (isActive) {
@@ -408,8 +410,8 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
 
   return (
     <section className="dashboard">
-      <h2>View Tickets</h2>
-      <p className="subtitle">Browse active bugs across your visible projects and open detailed reports.</p>
+       <h2>{t('pages.viewTickets.title', 'View Tickets')}</h2>
+       <p className="subtitle">{t('pages.viewTickets.subtitle', 'Browse active bugs across your visible projects and open detailed reports.')}</p>
 
       {error ? (
         <p role="alert" className="error-text">
@@ -417,7 +419,7 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
         </p>
       ) : null}
 
-      {loading ? <div className="spinner" aria-label="loading tickets" /> : null}
+       {loading ? <div className="spinner" aria-label={t('pages.viewTickets.loading', 'loading tickets')} /> : null}
 
       <ActiveTicketFilters
            token={token}
@@ -437,10 +439,10 @@ export default function ViewTicketsPage({ token, userRole, userType = 'human', c
         onBulkAssign={openBulkAssign}
         activeFilterCount={Number(quickFilter !== 'all') + Object.values(serverFilters).filter(Boolean).length}
       />
-      {quickFilter === 'recently-updated' ? <p className="subtitle">Recently Updated sorts this current page only.</p> : null}
-      {quickFilter === 'urgent' ? <p className="subtitle">Urgent (urgent severity or P0) filters the current page because the server does not expose an OR filter.</p> : null}
+       {quickFilter === 'recently-updated' ? <p className="subtitle">{t('pages.viewTickets.recentlyUpdatedHelp', 'Recently Updated sorts this current page only.')}</p> : null}
+       {quickFilter === 'urgent' ? <p className="subtitle">{t('pages.viewTickets.urgentHelp', 'Urgent (urgent severity or P0) filters the current page because the server does not expose an OR filter.')}</p> : null}
 
-      {!loading && !error && quickFilteredTickets.length === 0 ? <p className="dashboard-empty">No active tickets in this view.</p> : null}
+       {!loading && !error && quickFilteredTickets.length === 0 ? <p className="dashboard-empty">{t('pages.viewTickets.empty', 'No active tickets in this view.')}</p> : null}
 
       {!error && (totalCount > 0 || quickFilteredTickets.length > 0) ? (
         <TicketTable tickets={quickFilteredTickets} columns={columns} rowMenuItems={ticketMenuItems} loading={loading} currentUserId={currentUserId} rowCount={totalCount} paginationModel={paginationModel} onPaginationModelChange={(next) => { if (next.pageSize !== paginationModel.pageSize) cursors.current = [null]; setPaginationModel(next.pageSize !== paginationModel.pageSize ? { ...next, page: 0 } : next); }} />

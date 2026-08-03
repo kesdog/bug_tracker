@@ -19,6 +19,7 @@ const UserManagementPage = lazy(() => import('./pages/UserManagementPage'));
 const ViewTicketsPage = lazy(() => import('./pages/ViewTicketsPage'));
 import { readAppUrlState, writeAppUrlState } from './url_state';
 import { getAppHeaderMeta } from './appViewConfig';
+import { useI18n } from './i18n';
 import {
   clearStoredSession,
   createSessionManager,
@@ -29,6 +30,7 @@ import {
 } from './session_manager';
 
 export default function App() {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [demoConfig] = useState(readDemoConfig);
@@ -362,7 +364,7 @@ export default function App() {
     writeAppUrlState(next);
   }
 
-  const headerMeta = getAppHeaderMeta({ session, isSetupRoute, loginView, currentPage });
+  const headerMeta = getAppHeaderMeta({ session, isSetupRoute, loginView, currentPage, t });
 
   useEffect(() => {
     document.title = `${headerMeta.title} | Bug Tracker`;
@@ -393,7 +395,7 @@ export default function App() {
             title={headerMeta.title}
             description={headerMeta.description}
             action={currentPage === 'dashboard' ? <Chip label={session.user.username || session.user.userId} color="primary" variant="outlined" /> : null}
-            eyebrow="Bug operations"
+            eyebrow={t('app.bugOperations', 'Bug operations')}
           />
 
           <Suspense fallback={<Box role="status" sx={{ py: 6, textAlign: 'center' }}>Loading page...</Box>}>

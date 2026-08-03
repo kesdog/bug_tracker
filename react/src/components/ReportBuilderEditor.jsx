@@ -1,6 +1,7 @@
 import React from 'react';
 import Button from '@mui/material/Button';
 import { ALLOWED_IMAGE_TYPES, fileToImageDto, getImageByteSize, MAX_IMAGE_BYTES, MAX_REPORT_IMAGE_BYTES, MAX_REPORT_IMAGES, MAX_REPORT_TEXT_LENGTH } from '../report_builder';
+import { useI18n } from '../i18n';
 
 // Shared MIME type guard used by both add and replace actions.
 function isAllowedImage(file) {
@@ -8,6 +9,7 @@ function isAllowedImage(file) {
 }
 
 export default function ReportBuilderEditor({ builder, label = 'Report', submitting = false, error = '', textConflicted = false, imageConflicted = false, textConflictNoteId, imageConflictNoteId, onChange, onError }) {
+  const { t } = useI18n();
   const addImageQueueRef = React.useRef(Promise.resolve());
   const pendingAddCountRef = React.useRef(0);
   const pendingAddBytesRef = React.useRef(0);
@@ -37,22 +39,22 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
     }
 
     if (!isAllowedImage(file)) {
-      onError('Use PNG, JPEG, or WebP images only.');
+      onError(t('reportBuilder.invalidImageType', 'Use PNG, JPEG, or WebP images only.'));
       return;
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      onError('Each image must be 4 MiB or smaller.');
+      onError(t('reportBuilder.imageTooLarge', 'Each image must be 4 MiB or smaller.'));
       return;
     }
 
     if (builder.imageCount + pendingAddCountRef.current >= MAX_REPORT_IMAGES) {
-      onError(`Attach up to ${MAX_REPORT_IMAGES} images.`);
+      onError(t('reportBuilder.maxImages', 'Attach up to {{count}} images.', { count: MAX_REPORT_IMAGES }));
       return;
     }
 
     if (builder.imageBytes + pendingAddBytesRef.current + file.size > MAX_REPORT_IMAGE_BYTES) {
-      onError('Report images must total 12 MiB or less.');
+      onError(t('reportBuilder.imagesTooLarge', 'Report images must total 12 MiB or less.'));
       return;
     }
 
@@ -68,17 +70,17 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
           onError('');
           onChange((current) => {
             if (current.imageCount >= MAX_REPORT_IMAGES) {
-              onError(`Attach up to ${MAX_REPORT_IMAGES} images.`);
+                onError(t('reportBuilder.maxImages', 'Attach up to {{count}} images.', { count: MAX_REPORT_IMAGES }));
               return current;
             }
             if (current.imageBytes + image.sizeBytes > MAX_REPORT_IMAGE_BYTES) {
-              onError('Report images must total 12 MiB or less.');
+                onError(t('reportBuilder.imagesTooLarge', 'Report images must total 12 MiB or less.'));
               return current;
             }
             return current.addImageAfter(blockId, image);
           });
         } catch (err) {
-          if (mountedRef.current) onError(err.message || 'Unable to load selected image.');
+          if (mountedRef.current) onError(err.message || t('reportBuilder.loadImageError', 'Unable to load selected image.'));
         } finally {
           pendingAddCountRef.current = Math.max(0, pendingAddCountRef.current - 1);
           pendingAddBytesRef.current = Math.max(0, pendingAddBytesRef.current - file.size);
@@ -97,12 +99,12 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
     }
 
     if (!isAllowedImage(file)) {
-      onError('Use PNG, JPEG, or WebP images only.');
+      onError(t('reportBuilder.invalidImageType', 'Use PNG, JPEG, or WebP images only.'));
       return;
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      onError('Each image must be 4 MiB or smaller.');
+      onError(t('reportBuilder.imageTooLarge', 'Each image must be 4 MiB or smaller.'));
       return;
     }
 
@@ -113,13 +115,13 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
         const currentImage = current.blocks.find((block) => block.id === blockId)?.image;
         const nextBytes = current.imageBytes - getImageByteSize(currentImage) + image.sizeBytes;
         if (nextBytes > MAX_REPORT_IMAGE_BYTES) {
-          onError('Report images must total 12 MiB or less.');
+          onError(t('reportBuilder.imagesTooLarge', 'Report images must total 12 MiB or less.'));
           return current;
         }
         return current.replaceImage(blockId, image);
       });
     } catch (err) {
-      onError(err.message || 'Unable to load selected image.');
+      onError(err.message || t('reportBuilder.loadImageError', 'Unable to load selected image.'));
     }
   }
 
@@ -132,16 +134,16 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
     <div
       className={`report-builder-editor ${textConflicted || imageConflicted ? 'conflict-field' : ''}`}
       role="group"
-      aria-label={`${label} editor`}
+      aria-label={t('reportBuilder.editor', '{{label}} editor', { label })}
       aria-describedby={[error ? errorId : '', textConflicted ? textConflictNoteId : '', imageConflicted ? imageConflictNoteId : ''].filter(Boolean).join(' ') || undefined}
     >
       {builder.blocks.map((block, index) => (
         <section key={block.id} className="report-block-row">
           <header className="report-block-head">
-            <span className="report-block-type">{block.type === 'text' ? 'Text block' : 'Image block'}</span>
+            <span className="report-block-type">{block.type === 'text' ? t('reportBuilder.textBlock', 'Text block') : t('reportBuilder.imageBlock', 'Image block')}</span>
             <div className="report-block-actions">
               <button type="button" className="tiny-action" disabled={submitting || index === 0} aria-describedby={block.type === 'image' && imageConflicted ? imageConflictNoteId : undefined} onClick={() => onChange((current) => current.moveBlock(block.id, 'up'))}>
-                Up
+                {t('common.up', 'Up')}
               </button>
               <button
                 type="button"
@@ -150,37 +152,37 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
                 aria-describedby={block.type === 'image' && imageConflicted ? imageConflictNoteId : undefined}
                 onClick={() => onChange((current) => current.moveBlock(block.id, 'down'))}
               >
-                Down
+                {t('common.down', 'Down')}
               </button>
               <button type="button" className="tiny-action" disabled={submitting} aria-describedby={block.type === 'image' && imageConflicted ? imageConflictNoteId : undefined} onClick={() => removeBlock(block.id)}>
-                Remove
+                {t('common.remove', 'Remove')}
               </button>
             </div>
           </header>
 
           {block.type === 'text' ? (
             <textarea
-              aria-label={`${label} text block ${index + 1}`}
+              aria-label={t('reportBuilder.textBlockLabel', '{{label}} text block {{index}}', { label, index: index + 1 })}
               rows="4"
               value={block.text}
               onChange={(event) => onChange((current) => current.updateText(block.id, event.target.value))}
-              placeholder="Write report text"
+              placeholder={t('reportBuilder.writeText', 'Write report text')}
               maxLength={Math.max(0, MAX_REPORT_TEXT_LENGTH - (builder.textLength - String(block.text || '').length))}
               disabled={submitting}
               aria-describedby={textConflicted ? textConflictNoteId : undefined}
             />
           ) : (
             <div className="report-inline-image-wrap">
-              <img className="report-inline-image" src={block.image?.dataUrl} alt={block.image?.name || 'report image'} />
-              <p className="report-image-name">{block.image?.name || 'image'}</p>
+              <img className="report-inline-image" src={block.image?.dataUrl} alt={block.image?.name || t('reportBuilder.imageAlt', 'report image')} />
+              <p className="report-image-name">{block.image?.name || t('reportBuilder.image', 'image')}</p>
               <Button type="button" size="small" variant="outlined" disabled={submitting} aria-describedby={imageConflicted ? imageConflictNoteId : undefined} onClick={() => openFilePicker(`replace-${block.id}`)}>
-                Replace image
+                {t('reportBuilder.replaceImage', 'Replace image')}
               </Button>
                 <input
                   ref={(node) => node ? fileInputs.current.set(`replace-${block.id}`, node) : fileInputs.current.delete(`replace-${block.id}`)}
                   className="tiny-upload-input"
                   type="file"
-                  aria-label={`Replace image ${block.image?.name || index + 1}`}
+                  aria-label={t('reportBuilder.replaceImageLabel', 'Replace image {{image}}', { image: block.image?.name || index + 1 })}
                   aria-describedby={imageConflicted ? imageConflictNoteId : undefined}
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(event) => handleReplaceImage(block.id, event)}
@@ -191,16 +193,16 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
 
           <div className="report-block-add">
             <button type="button" className="tiny-action" disabled={submitting} onClick={() => onChange((current) => current.addTextAfter(block.id))}>
-              Add text below
+              {t('reportBuilder.addTextBelow', 'Add text below')}
             </button>
             <Button type="button" size="small" variant="outlined" disabled={submitting || builder.imageCount >= MAX_REPORT_IMAGES} aria-describedby={imageConflicted ? imageConflictNoteId : undefined} onClick={() => openFilePicker(`add-${block.id}`)}>
-              Add image below
+              {t('reportBuilder.addImageBelow', 'Add image below')}
             </Button>
               <input
                 ref={(node) => node ? fileInputs.current.set(`add-${block.id}`, node) : fileInputs.current.delete(`add-${block.id}`)}
                 className="tiny-upload-input"
                 type="file"
-                aria-label={`Add image below block ${index + 1}`}
+                aria-label={t('reportBuilder.addImageBelowLabel', 'Add image below block {{index}}', { index: index + 1 })}
                 aria-describedby={imageConflicted ? imageConflictNoteId : undefined}
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(event) => handleAddImage(block.id, event)}
@@ -211,7 +213,7 @@ export default function ReportBuilderEditor({ builder, label = 'Report', submitt
       ))}
 
       {error ? <p id={errorId} role="alert" className="error-text">{error}</p> : null}
-      <p id={countId} className="report-image-count">{builder.textLength.toLocaleString()} / {MAX_REPORT_TEXT_LENGTH.toLocaleString()} characters. {builder.imageCount} / {MAX_REPORT_IMAGES} image block(s).</p>
+      <p id={countId} className="report-image-count">{t('reportBuilder.count', '{{textLength}} / {{maxTextLength}} characters. {{imageCount}} / {{maxImages}} image block(s).', { textLength: builder.textLength.toLocaleString(), maxTextLength: MAX_REPORT_TEXT_LENGTH.toLocaleString(), imageCount: builder.imageCount, maxImages: MAX_REPORT_IMAGES })}</p>
     </div>
   );
 }

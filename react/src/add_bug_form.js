@@ -58,41 +58,43 @@ export function createInitialBugForm(projectId = '') {
   };
 }
 
-export function validateForm(form) {
+const defaultT = (_key, fallback) => fallback;
+
+export function validateForm(form, t = defaultT) {
   const errors = {};
 
   if (!form.issueTitle.trim()) {
-    errors.issueTitle = 'Issue title is required.';
+    errors.issueTitle = t('validation.issueTitleRequired', 'Issue title is required.');
   }
 
   if (!form.description.trim()) {
-    errors.description = 'Description is required.';
+    errors.description = t('validation.descriptionRequired', 'Description is required.');
   }
 
   if (!form.bugType) {
-    errors.bugType = 'Bug type is required.';
+    errors.bugType = t('validation.bugTypeRequired', 'Bug type is required.');
   }
 
   if (!form.severity) {
-    errors.severity = 'Severity is required.';
+    errors.severity = t('validation.severityRequired', 'Severity is required.');
   }
 
   if (!form.priority) {
-    errors.priority = 'Priority is required.';
+    errors.priority = t('validation.priorityRequired', 'Priority is required.');
   }
 
   if (!form.projectId) {
-    errors.projectId = 'Project is required.';
+    errors.projectId = t('validation.projectRequired', 'Project is required.');
   } else if (form.projectId === ADD_PROJECT_OPTION) {
-    errors.projectId = 'Create the new project before submitting the bug.';
+    errors.projectId = t('validation.createProjectBeforeSubmitting', 'Create the new project before submitting the bug.');
   }
 
   const tags = Array.isArray(form.tags) ? form.tags : [];
   const selectedCoreTags = CORE_TAG_VALUES.filter((tag) => tags.includes(tag));
   if (selectedCoreTags.length === 0) {
-    errors.tags = 'Choose front-end or back-end.';
+    errors.tags = t('validation.chooseCoreTag', 'Choose front-end or back-end.');
   } else if (selectedCoreTags.length > 1) {
-    errors.tags = 'Choose front-end or back-end, not both.';
+    errors.tags = t('validation.chooseOneCoreTag', 'Choose front-end or back-end, not both.');
   }
 
   return errors;

@@ -6,6 +6,7 @@ import { alpha } from '@mui/material/styles';
 import { DataGrid } from '@mui/x-data-grid';
 import { PriorityChip, SeverityChip, StatusChip } from './MuiPrimitives';
 import { formatActiveSince, formatTicketDate, getProjectName, getTicketSortValue, TICKET_FIELD_ACCESSORS } from '../table_utils';
+import { useI18n } from '../i18n';
 
 const DATE_FIELDS = new Set(['createdAt', 'updatedAt', 'closeDate', 'assignedAt']);
 const ORDERED_FIELDS = new Set(['severity', 'status', 'priority']);
@@ -105,6 +106,7 @@ export default function TicketTable({
   onFilterModelChange,
   currentUserId = ''
 }) {
+  const { t } = useI18n();
   const [menuState, setMenuState] = useState(null);
   const hasRowMenu = rowMenuItems.length > 0;
   const isCompact = wrapClassName.includes('dashboard-ticket-scroll');
@@ -183,7 +185,7 @@ export default function TicketTable({
 
   return (
     <>
-      {hasRowMenu ? <Box component="p" className="table-action-hint">Click or tap a ticket for options.</Box> : null}
+      {hasRowMenu ? <Box component="p" className="table-action-hint">{t('tickets.table.actionHint', 'Click or tap a ticket for options.')}</Box> : null}
       <Box
         className={wrapperClass}
         sx={{ width: '100%', minHeight: isCompact ? 320 : 420, height: getGridHeight(rows.length, isCompact) }}
@@ -213,7 +215,7 @@ export default function TicketTable({
             autoFocusSearchField: false
           }
         }}
-        aria-label="Ticket table"
+        aria-label={t('tickets.table.ariaLabel', 'Ticket table')}
         onRowClick={(params, event) => {
           if (!hasRowMenu || event.target?.closest?.('button, a, input, select, textarea')) {
             return;
@@ -305,7 +307,7 @@ export default function TicketTable({
         onClose={closeMenu}
         anchorReference="anchorPosition"
         anchorPosition={menuState ? { top: menuState.y, left: menuState.x } : undefined}
-        slotProps={{ list: { 'aria-label': 'Ticket actions' } }}
+        slotProps={{ list: { 'aria-label': t('tickets.actions.menu', 'Ticket actions') } }}
       >
         {menuState ? rowMenuItems.filter((item) => !item.shouldShow || item.shouldShow(menuState.ticket)).map((item) => (
           <MenuItem key={`${menuState.ticket.id}-${item.key}`} disabled={item.disabled ? item.disabled(menuState.ticket) : false} onClick={() => onMenuItemSelect(item, menuState.ticket)}>

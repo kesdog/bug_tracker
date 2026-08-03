@@ -32,10 +32,13 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import SendIcon from '@mui/icons-material/Send';
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from '../api/notifications';
 import ColorModeToggle from './ColorModeToggle';
+import LanguageSelector from './LanguageSelector';
+import { useI18n } from '../i18n';
 
 export const drawerWidth = 268;
 
 export default function NavBar({ currentPage, onNavigate, userRole, token, user, onLogout }) {
+  const { t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -50,15 +53,15 @@ export default function NavBar({ currentPage, onNavigate, userRole, token, user,
   const notificationsOpen = Boolean(notificationAnchor);
 
   const navigationItems = [
-    { page: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { page: 'tickets', label: 'View Tickets', icon: <BugReportIcon /> },
-    { page: 'allocated', label: 'Allocated Bugs', icon: <AssignmentTurnedInIcon /> },
-    ...(canTrackSubmitted ? [{ page: 'submitted', label: 'Submitted', icon: <SendIcon /> }] : []),
-    { page: 'archived', label: 'Archived', icon: <HistoryIcon /> },
-    { page: 'add-bug', label: 'Add Bug', icon: <AddCircleOutlinedIcon /> },
-    ...(canManageProjects ? [{ page: 'project-management', label: 'Projects', icon: <FolderCopyIcon /> }] : []),
-    ...(canManageUsers ? [{ page: 'user-management', label: 'Users', icon: <PeopleAltIcon /> }] : []),
-    ...(canManageUsers ? [{ page: 'audit-logs', label: 'Logs', icon: <ReceiptLongIcon /> }] : [])
+    { page: 'dashboard', label: t('nav.dashboard', 'Dashboard'), icon: <DashboardIcon /> },
+    { page: 'tickets', label: t('nav.tickets', 'View Tickets'), icon: <BugReportIcon /> },
+    { page: 'allocated', label: t('nav.allocated', 'Allocated Bugs'), icon: <AssignmentTurnedInIcon /> },
+    ...(canTrackSubmitted ? [{ page: 'submitted', label: t('nav.submitted', 'Submitted'), icon: <SendIcon /> }] : []),
+    { page: 'archived', label: t('nav.archived', 'Archived'), icon: <HistoryIcon /> },
+    { page: 'add-bug', label: t('nav.addBug', 'Add Bug'), icon: <AddCircleOutlinedIcon /> },
+    ...(canManageProjects ? [{ page: 'project-management', label: t('nav.projects', 'Projects'), icon: <FolderCopyIcon /> }] : []),
+    ...(canManageUsers ? [{ page: 'user-management', label: t('nav.users', 'Users'), icon: <PeopleAltIcon /> }] : []),
+    ...(canManageUsers ? [{ page: 'audit-logs', label: t('nav.logs', 'Logs'), icon: <ReceiptLongIcon /> }] : [])
   ];
 
   useEffect(() => {
@@ -101,7 +104,7 @@ export default function NavBar({ currentPage, onNavigate, userRole, token, user,
       setNotifications((current) => current.filter((item) => item.id !== notificationId));
       setNotificationAnchor(null);
     } catch {
-      setNotificationError('Unable to mark notification read.');
+      setNotificationError(t('nav.errors.markRead', 'Unable to mark notification read.'));
     }
   }
 
@@ -112,7 +115,7 @@ export default function NavBar({ currentPage, onNavigate, userRole, token, user,
       setNotifications([]);
       setNotificationAnchor(null);
     } catch {
-      setNotificationError('Unable to mark notifications read.');
+      setNotificationError(t('nav.errors.markAllRead', 'Unable to mark notifications read.'));
     }
   }
 
@@ -123,7 +126,7 @@ export default function NavBar({ currentPage, onNavigate, userRole, token, user,
           <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 900 }}>BT</Avatar>
           <Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1 }}>Bug Ops</Typography>
-            <Typography variant="caption" color="text.secondary">Incident command</Typography>
+            <Typography variant="caption" color="text.secondary">{t('nav.incidentCommand', 'Incident command')}</Typography>
           </Box>
         </Stack>
       </Box>
@@ -144,10 +147,10 @@ export default function NavBar({ currentPage, onNavigate, userRole, token, user,
       <Box sx={{ flexGrow: 1 }} />
       <Divider />
       <Stack spacing={1} sx={{ p: 2 }}>
-        <Typography variant="caption" color="text.secondary">Signed in as</Typography>
-        <Typography className="identity-tag" variant="body2" sx={{ fontWeight: 900, wordBreak: 'break-word' }}>{`${user?.username || user?.userId || 'user'} - ${user?.role || 'user'}`}</Typography>
+        <Typography variant="caption" color="text.secondary">{t('nav.signedInAs', 'Signed in as')}</Typography>
+        <Typography className="identity-tag" variant="body2" sx={{ fontWeight: 900, wordBreak: 'break-word' }}>{`${user?.username || user?.userId || t('nav.user', 'user')} - ${user?.role || t('nav.user', 'user')}`}</Typography>
         <Button type="button" startIcon={<LogoutIcon />} onClick={onLogout} color="inherit" variant="outlined">
-          Log Out
+          {t('nav.logout', 'Log Out')}
         </Button>
       </Stack>
     </Stack>
@@ -161,17 +164,18 @@ export default function NavBar({ currentPage, onNavigate, userRole, token, user,
             type="button"
             color="inherit"
             edge="start"
-            aria-label="Toggle navigation menu"
+             aria-label={t('nav.toggle', 'Toggle navigation menu')}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((value) => !value)}
             sx={{ mr: 1.5, display: { md: 'none' } }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 900 }}>
-            Bug Tracker
-          </Typography>
-          <ColorModeToggle />
+           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 900 }}>
+             Bug Tracker
+           </Typography>
+           <LanguageSelector />
+           <ColorModeToggle />
           {notificationsAvailable ? (
             <IconButton
               type="button"
@@ -206,18 +210,18 @@ export default function NavBar({ currentPage, onNavigate, userRole, token, user,
         </Drawer>
       </Box>
 
-      <Menu anchorEl={notificationAnchor} open={notificationsOpen} onClose={() => setNotificationAnchor(null)} slotProps={{ list: { 'aria-label': 'Unread notifications' } }}>
+       <Menu anchorEl={notificationAnchor} open={notificationsOpen} onClose={() => setNotificationAnchor(null)} slotProps={{ list: { 'aria-label': t('nav.unread', 'Unread notifications') } }}>
         {notificationError ? <MenuItem disabled>{notificationError}</MenuItem> : null}
-        {notifications.length === 0 ? <MenuItem disabled>No unread alerts.</MenuItem> : null}
+        {notifications.length === 0 ? <MenuItem disabled>{t('nav.noUnread', 'No unread alerts.')}</MenuItem> : null}
         {notifications.length > 0 ? (
           <MenuItem onClick={handleMarkAllRead} sx={{ fontWeight: 800 }}>
-            Mark all read
+            {t('nav.markAllRead', 'Mark all read')}
           </MenuItem>
         ) : null}
         {notifications.map((notification) => (
           <MenuItem key={notification.id} sx={{ whiteSpace: 'normal', maxWidth: 360, alignItems: 'flex-start', gap: 1 }}>
-            <Box sx={{ flexGrow: 1 }}>{notification.message || notification.title || 'Ticket notification'}</Box>
-            <Button type="button" size="small" variant="text" onClick={() => handleMarkRead(notification.id)}>Mark read</Button>
+            <Box sx={{ flexGrow: 1 }}>{notification.message || notification.title || t('nav.ticketNotification', 'Ticket notification')}</Box>
+            <Button type="button" size="small" variant="text" onClick={() => handleMarkRead(notification.id)}>{t('nav.markRead', 'Mark read')}</Button>
           </MenuItem>
         ))}
       </Menu>

@@ -171,6 +171,11 @@ public sealed class DeliveryHostingIntegrationTests
         Assert.Equal(HttpStatusCode.OK, assetResponse.StatusCode);
         Assert.Contains("immutable", assetResponse.Headers.CacheControl?.ToString(), StringComparison.Ordinal);
 
+        var discoveryResponse = await client.GetAsync("/llms.txt");
+        Assert.Equal(HttpStatusCode.OK, discoveryResponse.StatusCode);
+        Assert.Equal("text/plain", discoveryResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("HTTP API instead of the browser GUI", await discoveryResponse.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
         var missingAssetResponse = await client.GetAsync("/assets/missing.js");
         Assert.Equal(HttpStatusCode.NotFound, missingAssetResponse.StatusCode);
         Assert.NotEqual("text/html", missingAssetResponse.Content.Headers.ContentType?.MediaType);
@@ -212,6 +217,10 @@ public sealed class DeliveryHostingIntegrationTests
         using var normalFactory = new TestApiFactory();
         using var normalClient = normalFactory.CreateClient();
         Assert.Equal(HttpStatusCode.NotFound, (await normalClient.GetAsync("/api/demo/config")).StatusCode);
+
+        using var privateDemoFactory = TestApiFactory.CreatePrivateDemo();
+        using var privateDemoClient = privateDemoFactory.CreateClient();
+        Assert.Equal(HttpStatusCode.NotFound, (await privateDemoClient.GetAsync("/api/demo/config")).StatusCode);
     }
 
     [Fact]
@@ -267,8 +276,33 @@ public sealed class DeliveryHostingIntegrationTests
         var body = await rejected.Content.ReadFromJsonAsync<JsonObject>();
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, rejected.StatusCode);
-        Assert.Equal("demo_quota_exceeded", body?["errorCode"]?.GetValue<string>());
+        Assert.Equal("quota_exceeded", body?["errorCode"]?.GetValue<string>());
         Assert.Equal("no-store", rejected.Headers.CacheControl?.ToString());
+    }
+
+    [Fact]
+    public async Task AuthenticatedAbuseLimits_ApplyOutsideDemo()
+    {
+        using var factory = TestApiFactory.WithMaxTickets(1);
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await factory.CreateAccessTokenAsync());
+        var request = new
+        {
+            issueTitle = "Bounded ticket",
+            description = "The second write must be rejected outside demo too.",
+            bugType = "api",
+            projectId = "project-general",
+            severity = "mid",
+            priority = "p2",
+            tags = new[] { "back-end" }
+        };
+
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/bugs", request)).StatusCode);
+        var rejected = await client.PostAsJsonAsync("/api/bugs", request);
+        var body = await rejected.Content.ReadFromJsonAsync<JsonObject>();
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, rejected.StatusCode);
+        Assert.Equal("quota_exceeded", body?["errorCode"]?.GetValue<string>());
     }
 
     [Fact]
@@ -295,6 +329,66 @@ public sealed class DeliveryHostingIntegrationTests
     }
 
     [Fact]
+    public async Task HumanLogin_LocksOnlyAfterTwentyFailuresForTheAccountAndIp()
+    {
+        using var factory = new TestApiFactory();
+        using var client = factory.CreateClient();
+
+        for (var attempt = 0; attempt < 19; attempt++)
+        {
+            var failed = await client.PostAsJsonAsync("/api/auth/login", new
+            {
+                email = TestApiFactory.DefaultUserEmail,
+                password = "wrong-password"
+            });
+            Assert.Equal(HttpStatusCode.Unauthorized, failed.StatusCode);
+        }
+
+        var locked = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = TestApiFactory.DefaultUserEmail,
+            password = "wrong-password"
+        });
+        Assert.Equal(HttpStatusCode.TooManyRequests, locked.StatusCode);
+        var lockedBody = await locked.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.Equal("login_locked", lockedBody?["errorCode"]?.GetValue<string>());
+        Assert.True(locked.Headers.Contains("Retry-After"));
+
+        var otherAccount = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = TestApiFactory.SeniorUserEmail,
+            password = TestApiFactory.DefaultUserPassword
+        });
+        Assert.Equal(HttpStatusCode.OK, otherAccount.StatusCode);
+    }
+
+    [Fact]
+    public async Task AgentLogin_HasAnIndependentTwentyFailureLockout()
+    {
+        using var factory = new TestApiFactory();
+        using var client = factory.CreateClient();
+
+        for (var attempt = 0; attempt < 19; attempt++)
+        {
+            var failed = await client.PostAsJsonAsync("/api/auth/agent/login", new
+            {
+                username = "agent_test",
+                oathToken = "wrong-oath-token"
+            });
+            Assert.Equal(HttpStatusCode.Unauthorized, failed.StatusCode);
+        }
+
+        var locked = await client.PostAsJsonAsync("/api/auth/agent/login", new
+        {
+            username = "agent_test",
+            oathToken = "wrong-oath-token"
+        });
+        Assert.Equal(HttpStatusCode.TooManyRequests, locked.StatusCode);
+        var body = await locked.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.Equal("login_locked", body?["errorCode"]?.GetValue<string>());
+    }
+
+    [Fact]
     public async Task DemoEnvironment_AuthenticatedLimiterReturns429AndRetryAfter()
     {
         using var factory = TestApiFactory.CreateDemo();
@@ -314,6 +408,30 @@ public sealed class DeliveryHostingIntegrationTests
         Assert.True(rejected.Headers.Contains("Retry-After"));
     }
 
+    [Fact]
+    public async Task DemoEnvironment_AgentOathTokensAlwaysExpireWithinOneDay()
+    {
+        using var factory = TestApiFactory.CreateDemo();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await factory.CreateAccessTokenAsync(TestApiFactory.AdminUserId));
+        var request = await client.PostAsJsonAsync("/api/auth/requests", new
+        {
+            email = $"agent.ttl.{Guid.NewGuid():N}@example.com",
+            requestType = "ai_agent"
+        });
+        var requestBody = await request.Content.ReadFromJsonAsync<JsonObject>();
+        var requestId = requestBody?["requestId"]?.GetValue<string>();
+        var beforeIssue = DateTimeOffset.UtcNow;
+
+        var issued = await client.PostAsJsonAsync($"/api/auth/requests/{requestId}/issue-api-key", new { activeDays = 30 });
+        var issuedBody = await issued.Content.ReadFromJsonAsync<JsonObject>();
+        var expiresAt = issuedBody?["expiresAt"]?.GetValue<DateTimeOffset>();
+
+        Assert.Equal(HttpStatusCode.OK, issued.StatusCode);
+        Assert.NotNull(expiresAt);
+        Assert.InRange(expiresAt!.Value, beforeIssue.AddDays(1).AddSeconds(-1), beforeIssue.AddDays(1).AddSeconds(2));
+    }
+
     private sealed class SpaHostingFactory : WebApplicationFactory<Program>
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), $"bug-tracker-delivery-{Guid.NewGuid():N}");
@@ -325,6 +443,7 @@ public sealed class DeliveryHostingIntegrationTests
             Directory.CreateDirectory(Path.Combine(WebRootPath, "assets"));
             File.WriteAllText(Path.Combine(WebRootPath, "index.html"), "<!doctype html><title>delivery-spa</title>");
             File.WriteAllText(Path.Combine(WebRootPath, "assets", "app-test.js"), "window.deliverySpa = true;");
+            File.WriteAllText(Path.Combine(WebRootPath, "llms.txt"), "Use the HTTP API instead of the browser GUI.");
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

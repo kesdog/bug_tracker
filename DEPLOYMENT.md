@@ -42,6 +42,8 @@ Do not put real secrets in the Dockerfile, image build arguments, source control
 
 Mount durable, backed-up storage at `/data`. The default database is `/data/bug_tracker.db` and audit files use `/data/audit`. The image runs as the non-root `app` user; `/app` remains root-owned and immutable. Compose drops every Linux capability, enables `no-new-privileges`, mounts the root filesystem read-only, and provides only a bounded `/tmp` tmpfs with `nodev`, `nosuid`, and `noexec`. A new named volume inherits the prepared `/data` ownership. For a bind mount, make the host directory writable by the image's numeric user:
 
+The application caps the collective SQLite database, WAL, and SHM footprint at `TicketDataStorage__MaxBytes` (default `5000000000`). Storage-growing writes are rejected before the cap, and startup/rejection logs include physical and per-table/index sizes for operational diagnosis.
+
 ```bash
 # After image build, inspect the authoritative UID/GID instead of assuming it.
 docker run --rm --entrypoint id bug-tracker:local
@@ -56,6 +58,7 @@ The demo template enables a daily reset at **04:00 UTC** with:
 
 ```dotenv
 ASPNETCORE_ENVIRONMENT=Demo
+Demo__PublicEnabled=true
 DemoReset__Enabled=true
 DemoReset__HourUtc=4
 DemoReset__AllowedEnvironments__0=Demo
@@ -89,7 +92,9 @@ For a registry deployment, build and publish an immutable tag, set `BUG_TRACKER_
 
 Terminate TLS at a provider-neutral reverse proxy or load balancer and forward to HTTP port `8080`. Redirect HTTP to HTTPS and emit HSTS at that edge after HTTPS is verified. Preserve the original host/scheme through standard forwarded headers, and allow WebSocket upgrade/long-lived connections for `/api/agent/notifications/ws`. Configure edge idle timeouts above the application's heartbeat and retry window. The app trusts forwarded headers only from configured known proxies; direct clients cannot select their own rate-limit partition with spoofed forwarding headers.
 
-The Demo environment applies per-client authenticated request/write/export/upload/WebSocket limits and reset-generation resource budgets. Defaults cap the fixture plus visitor data at 25 projects, 300 tickets, 600 comments, 100 attachments, and 256 MiB of persisted evidence while preserving a 256 MiB filesystem reserve. Use a volume quota larger than the reserve and observe quota rejections before increasing these values.
+Public demo credentials and UI are disabled unless both `ASPNETCORE_ENVIRONMENT=Demo` and `Demo__PublicEnabled=true` are set. This configuration is only for isolated, disposable infrastructure and must never share data volumes or secrets with another deployment.
+
+`AuthenticatedAbuse` applies per-client authenticated request/write/export/upload/WebSocket limits and resource budgets in every environment. Defaults cap data at 25 projects, 300 tickets, 600 comments, 100 attachments, and 256 MiB of persisted evidence while preserving a 256 MiB filesystem reserve. Configure every `AuthenticatedAbuse__*` value explicitly for the deployment; use a volume quota larger than the reserve and observe quota rejections before increasing them.
 
 ## Future transactional email delivery
 

@@ -76,7 +76,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         IsLoginEndpoint(context.Request.Path)
-            ? RateLimitPartition.GetFixedWindowLimiter("demo-login-global", _ => new FixedWindowRateLimiterOptions
+            ? RateLimitPartition.GetFixedWindowLimiter($"login-ip:{context.Connection.RemoteIpAddress}", _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
                 PermitLimit = 120,
@@ -95,14 +95,27 @@ builder.Services.AddSingleton(new PasswordHasherService());
 builder.Services.AddSingleton(new TokenService(tokenSecret));
 builder.Services.AddSingleton(publicRateLimits);
 builder.Services.AddSingleton<PublicEndpointIdentityRateLimiter>();
-builder.Services.AddOptions<DemoAbuseOptions>()
-    .Bind(builder.Configuration.GetSection("DemoAbuse"))
+builder.Services.AddSingleton<LoginSecurityMonitor>();
+builder.Services.AddOptions<AuthenticatedAbuseOptions>()
+    .Bind(builder.Configuration.GetSection("AuthenticatedAbuse"))
     .Validate(options => options.StorageSafetyReserveBytes >= 0 && options.MaxEvidenceBytes > 0,
-        "DemoAbuse storage limits must be positive.")
+        "AuthenticatedAbuse storage limits must be positive.")
     .Validate(options => options.MaxProjects > 0 && options.MaxTickets > 0 && options.MaxComments > 0 && options.MaxAttachments > 0,
-        "DemoAbuse resource quotas must be positive.")
+        "AuthenticatedAbuse resource quotas must be positive.")
+    .Validate(options => options.GeneralPermitLimit > 0 && options.GeneralWindowMinutes > 0
+        && options.CreatePermitLimit > 0 && options.CreateWindowMinutes > 0
+        && options.WritePermitLimit > 0 && options.WriteWindowMinutes > 0
+        && options.UploadPermitLimit > 0 && options.UploadWindowMinutes > 0
+        && options.ExportPermitLimit > 0 && options.ExportWindowMinutes > 0
+        && options.WebSocketPermitLimit > 0 && options.WebSocketWindowMinutes > 0,
+        "AuthenticatedAbuse rate limits must be positive.")
     .ValidateOnStart();
-builder.Services.AddSingleton<DemoAbuseProtection>();
+builder.Services.AddSingleton<AuthenticatedAbuseProtection>();
+builder.Services.AddOptions<TicketDataStorageOptions>()
+    .Bind(builder.Configuration.GetSection("TicketDataStorage"))
+    .Validate(options => options.MaxBytes > 0, "TicketDataStorage:MaxBytes must be positive.")
+    .ValidateOnStart();
+builder.Services.AddSingleton<TicketDataStorageService>();
 builder.Services.AddSingleton(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
@@ -111,6 +124,7 @@ builder.Services.AddSingleton(sp =>
     return new SqliteConnectionFactory(dbPath);
 });
 builder.Services.AddSingleton<AuthRepository>();
+builder.Services.AddSingleton<FirstRunSetupService>();
 builder.Services.AddSingleton<TicketWriteAuthorizationService>();
 builder.Services.AddSingleton<ImageValidationService>();
 builder.Services.AddSingleton<BugRepository>();
@@ -159,15 +173,18 @@ builder.Services.AddSingleton(sp => new AuditFilePublisher(
     ResolveAuditLogDirectory(builder.Configuration["Audit:LogDirectory"], builder.Environment.ContentRootPath)));
 builder.Services.AddSingleton<OutboxDispatcher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatcher>());
+builder.Services.AddHostedService<ApplicationShutdownService>();
 builder.Services.AddSingleton(sp => new AuditLogger(
     sp.GetRequiredService<AuditRepository>(),
     ResolveAuditLogDirectory(builder.Configuration["Audit:LogDirectory"], builder.Environment.ContentRootPath)));
 builder.Services.AddHostedService<SystemLifecycleAuditService>();
 builder.Services.AddTransient<AuthMiddleware>();
-builder.Services.AddTransient<DemoAbuseMiddleware>();
+builder.Services.AddTransient<FirstRunSetupMiddleware>();
+builder.Services.AddTransient<AuthenticatedAbuseMiddleware>();
 
 var app = builder.Build();
 await new SqliteMigrationRunner(app.Services.GetRequiredService<SqliteConnectionFactory>()).MigrateAsync();
+await app.Services.GetRequiredService<TicketDataStorageService>().InitializeAsync();
 var databaseCommandExitCode = await DatabaseCommandRunner.RunIfRequestedAsync(
     args,
     app.Services.GetRequiredService<SqliteConnectionFactory>(),
@@ -273,7 +290,8 @@ app.Map("/api/agent/notifications/ws", agentWs =>
     agentWs.Run(AgentNotificationWebSocketEndpoint.HandleAsync);
 });
 app.UseMiddleware<AuthMiddleware>();
-app.UseMiddleware<DemoAbuseMiddleware>();
+app.UseMiddleware<FirstRunSetupMiddleware>();
+app.UseMiddleware<AuthenticatedAbuseMiddleware>();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
 app.MapGet("/health/ready", async (DeliveryReadinessService readiness, CancellationToken ct) =>
@@ -284,6 +302,7 @@ app.MapGet("/health/ready", async (DeliveryReadinessService readiness, Cancellat
         : StatusCodes.Status503ServiceUnavailable);
 });
 app.MapAuthEndpoints();
+app.MapFirstRunSetupEndpoints();
 app.MapDemoInfoEndpoints();
 app.MapBugEndpoints();
 app.MapProjectEndpoints();
@@ -317,7 +336,7 @@ app.MapFallback(async context =>
         using var reader = new StreamReader(stream, Encoding.UTF8);
         var html = await reader.ReadToEndAsync(context.RequestAborted);
         var nonce = context.Items["csp_nonce"]?.ToString() ?? string.Empty;
-        var demoConfig = app.Environment.IsEnvironment("Demo")
+        var demoConfig = app.Environment.IsEnvironment("Demo") && app.Configuration.GetValue<bool>("Demo:PublicEnabled")
             ? Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(
                 DemoPublicConfiguration.Value,
                 new JsonSerializerOptions(JsonSerializerDefaults.Web))))

@@ -17,7 +17,7 @@ describe('auth client', () => {
       json: async () => mockResponse
     });
 
-    const result = await login('dev@example.com', 'DevPass123!');
+    const result = await login('dev@example.com', 'DevPass123!!');
     expect(result).toEqual(mockResponse);
   });
 

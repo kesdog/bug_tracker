@@ -150,7 +150,7 @@ public sealed partial class BugRepository
 
     private static string ApplyTicketAccessScope(SqliteCommand command, BugListAccessScope scope)
     {
-        if (scope.Role == "admin")
+        if (scope.Role == "admin" && scope.UserType == "human")
         {
             return string.Empty;
         }

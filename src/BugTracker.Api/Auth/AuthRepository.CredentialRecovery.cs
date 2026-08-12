@@ -193,6 +193,22 @@ public sealed partial class AuthRepository
             return false;
         }
 
+        const string revokeTokensSql = """
+            UPDATE auth_tokens
+            SET revoked_at = $now
+            WHERE user_id = $user_id
+              AND revoked_at IS NULL
+              AND expires_at > $now;
+            """;
+        await using (var revokeTokens = connection.CreateCommand())
+        {
+            revokeTokens.Transaction = transaction;
+            revokeTokens.CommandText = revokeTokensSql;
+            revokeTokens.Parameters.AddWithValue("$now", nowText);
+            revokeTokens.Parameters.AddWithValue("$user_id", userId);
+            await revokeTokens.ExecuteNonQueryAsync(ct);
+        }
+
         await transaction.CommitAsync(ct);
         return true;
     }

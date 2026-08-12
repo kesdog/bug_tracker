@@ -18,6 +18,7 @@ public sealed class SqliteConnectionFactory
 
         DatabaseDirectoryPath = directory
             ?? throw new InvalidOperationException("The database path does not have a containing directory.");
+        DatabasePath = fullDatabasePath;
 
         var baseBuilder = new SqliteConnectionStringBuilder
         {
@@ -38,6 +39,7 @@ public sealed class SqliteConnectionFactory
     }
 
     public string DatabaseDirectoryPath { get; }
+    public string DatabasePath { get; }
 
     public async Task<SqliteConnection> OpenConnectionAsync(bool readOnly, CancellationToken ct = default)
     {

@@ -39,7 +39,7 @@ describe('login page', () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(await screen.findByTestId('session-card')).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('login page', () => {
     render(<App />);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     await screen.findByTestId('session-card');
 
@@ -123,7 +123,7 @@ describe('login page', () => {
     expect(screen.getByText(/open users, then requests/i)).toBeInTheDocument();
   });
 
-  it('requires a six-character password with a number and special character during setup', async () => {
+  it('requires a twelve-character password with a number and special character during setup', async () => {
     window.history.replaceState({}, '', '/setup-password?email=new.user%40example.com&token=setup-token');
     render(<App />);
     const user = userEvent.setup();
@@ -132,8 +132,8 @@ describe('login page', () => {
     await user.type(screen.getByLabelText(/confirm new password/i), 'abcdef');
     await user.click(screen.getByRole('button', { name: /set password/i }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Password must be at least 6 characters with one number and one special character.');
-    expect(screen.getByText(/use at least 6 characters, including a number and special character/i)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Password must be at least 12 characters with one number and one special character.');
+    expect(screen.getByText(/use at least 12 characters, including a number and special character/i)).toBeInTheDocument();
   });
 
   it('locks the account email on a password link', async () => {

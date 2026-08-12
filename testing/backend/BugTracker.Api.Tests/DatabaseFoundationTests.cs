@@ -4,6 +4,7 @@ using BugTracker.Api.Bugs;
 using BugTracker.Api.Notifications;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace BugTracker.Api.Tests;
@@ -28,7 +29,8 @@ public sealed class DatabaseFoundationTests
             Assert.Equal(0L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM users;"));
             Assert.Equal(0L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM projects;"));
             Assert.Equal(0L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM bug_tickets;"));
-            Assert.Equal(11L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM schema_migrations;"));
+            Assert.Equal(13L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM schema_migrations;"));
+            Assert.Equal(1L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM first_run_setup WHERE singleton_id = 1 AND phase = 'not_bootstrapped';"));
             Assert.Equal(1L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM demo_reset_state WHERE singleton_id = 1 AND generation = 0;"));
             Assert.Equal(1L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM demo_reset_state WHERE cleanup_pending = 0 AND wal_checkpoint_completed = 1 AND audit_file_cleanup_completed = 1;"));
             Assert.Equal(3L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM pragma_table_info('demo_reset_state') WHERE name IN ('cleanup_pending', 'wal_checkpoint_completed', 'audit_file_cleanup_completed') AND [notnull] = 1;"));
@@ -48,7 +50,7 @@ public sealed class DatabaseFoundationTests
             await runner.MigrateAsync();
 
             await using var connection = await factory.OpenConnectionAsync(readOnly: true);
-            Assert.Equal(11L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM schema_migrations;"));
+            Assert.Equal(13L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM schema_migrations;"));
 
             await using var command = connection.CreateCommand();
             command.CommandText = "SELECT version, name, length(checksum) FROM schema_migrations ORDER BY version;";
@@ -61,6 +63,26 @@ public sealed class DatabaseFoundationTests
             Assert.Equal(2, reader.GetInt32(0));
             Assert.Equal("usernames", reader.GetString(1));
             Assert.Equal(64, reader.GetInt32(2));
+        });
+    }
+
+    [Fact]
+    public async Task TicketDataStorage_UsesExactConfiguredCapAndReportsDatabaseObjects()
+    {
+        await WithDatabaseAsync(async factory =>
+        {
+            await new SqliteMigrationRunner(factory).MigrateAsync();
+            var service = new TicketDataStorageService(
+                factory,
+                Options.Create(new TicketDataStorageOptions { MaxBytes = 5_000_000_000 }),
+                NullLogger<TicketDataStorageService>.Instance);
+
+            await service.InitializeAsync();
+            var snapshot = await service.GetSnapshotAsync();
+
+            Assert.True(snapshot.TotalBytes > 0);
+            Assert.Contains("bug_tickets", snapshot.ObjectBytes.Keys);
+            Assert.True(await service.CanGrowAsync(0, CancellationToken.None));
         });
     }
 
@@ -205,6 +227,7 @@ public sealed class DatabaseFoundationTests
             await using var connection = await factory.OpenConnectionAsync(readOnly: true);
             Assert.Equal(1L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM users WHERE role = 'admin' AND email = 'owner@example.com' AND username = 'owner';"));
             Assert.Equal(1L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM audit_logs WHERE action = 'bootstrap_admin';"));
+            Assert.Equal(1L, await ScalarLongAsync(connection, "SELECT COUNT(*) FROM first_run_setup WHERE singleton_id = 1 AND phase = 'password_change_required';"));
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => provisioner.BootstrapAdminAsync("second@example.com", "SecondPass123!"));
         });
@@ -289,6 +312,9 @@ public sealed class DatabaseFoundationTests
                         VALUES ('slow-agent', 'slow-agent@example.com', 'slow-agent', 'hash', 'dev', 'agent');
                         INSERT INTO projects (project_id, name, visibility) VALUES ('slow-project', 'Slow project', 'normal');
                         INSERT INTO project_allocations (project_id, user_id) VALUES ('slow-project', 'slow-agent');
+                        INSERT INTO user_requests
+                            (request_id, email, request_type, username, status, user_id, api_key_hash, api_key_prefix, api_key_expires_at)
+                        VALUES ('slow-agent-request', 'slow-agent@example.com', 'ai_agent', 'slow-agent', 'approved', 'slow-agent', 'active-hash', 'bta_slow', '2099-01-01 00:00:00');
                         INSERT INTO bug_tickets
                             (id, issue_title, description, bug_type, reporter_user_id, project_id, assignee_user_id,
                              status, severity, priority, tags_json)

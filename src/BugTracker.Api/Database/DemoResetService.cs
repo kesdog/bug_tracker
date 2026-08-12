@@ -58,6 +58,13 @@ public sealed class DemoResetService(
             generation = await DemoFixtureStore.ReadNextGenerationAsync(connection, transaction, ct);
             resetAt = _timeProvider.GetUtcNow();
             await DemoFixtureStore.InsertAsync(connection, transaction, passwordHasher, generation, resetAt, ct);
+            await using (var setup = connection.CreateCommand())
+            {
+                setup.Transaction = transaction;
+                setup.CommandText = "UPDATE first_run_setup SET phase = 'complete', updated_at = $now WHERE singleton_id = 1;";
+                setup.Parameters.AddWithValue("$now", resetAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss"));
+                await setup.ExecuteNonQueryAsync(ct);
+            }
             await DemoFixtureStore.UpdateResetStateAsync(connection, transaction, generation, resetAt, environment.Trim(), ct);
             await MarkCleanupPendingAsync(connection, transaction, ct);
             await DemoFixtureStore.ValidateAsync(connection, transaction, generation, ct);

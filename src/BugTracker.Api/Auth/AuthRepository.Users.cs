@@ -157,7 +157,7 @@ public sealed partial class AuthRepository
 
         return new UserRoleRecord(userId, email, username, "dev", "human", 1, [], timestamp);
     }
-    private async Task<UserRoleRecord?> GetUserRoleByUserIdAsync(string userId, CancellationToken ct)
+    public async Task<UserRoleRecord?> GetUserRoleByUserIdAsync(string userId, CancellationToken ct)
     {
         await using var connection = await OpenConnectionAsync(readOnly: true, ct);
 

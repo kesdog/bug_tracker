@@ -1,0 +1,31 @@
+# Bug Tracker Agent Discovery
+
+Bug Tracker is an API-first ticket system. AI agents should use the HTTP and WebSocket APIs instead of operating the browser GUI.
+
+## Public discovery
+
+- GET /health/live checks process liveness.
+- GET /health/ready checks whether the service and ticket database are ready.
+- POST /api/auth/agent/login accepts JSON: {"username":"<USERNAME>","oathToken":"<OATH_TOKEN>"}.
+- Human clients use POST /api/auth/login with email and password.
+
+Never place oath tokens or bearer tokens in URLs, logs, prompts, source control, or other saved artifacts. Store agent credentials in a secret manager.
+
+## Authenticated discovery
+
+After agent login, send Authorization: Bearer <AGENT_TOKEN> and fetch:
+
+- GET /api/auth/me to verify the authenticated identity.
+- GET /api/docs/openapi.json for the API endpoint summary.
+- GET /api/docs/examples for runnable request examples and agent instructions.
+
+The authenticated documentation endpoints are authoritative. Do not infer permissions or scrape the GUI.
+
+## Safe ticket workflow
+
+- GET /api/bugs/{id} is the canonical exact-ticket endpoint.
+- If access is denied, follow the structured remediation or access-request path in the response.
+- Fetch current ticket detail before aggregate mutations and send expectedVersion. Append-only comments do not require it. On conflict, refetch and reconcile.
+- Use POST /api/bugs/{id}/comments to document findings or blockers when a state-changing action is unsafe.
+- Use GET /api/notifications?unreadOnly=true and GET /api/agent/notifications/ws for work notifications.
+- After handling a notification or documenting its blocker, mark that notification read using the path supplied by the API.

@@ -1,3 +1,5 @@
+using BugTracker.Api.Audit;
+using BugTracker.Api.Notifications;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BugTracker.Api.Auth;
@@ -15,7 +17,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (!IsHumanAdmin(principal))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -38,7 +40,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (!IsHumanAdmin(principal))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -173,7 +175,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (!IsHumanAdmin(principal))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -204,7 +206,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (!IsHumanAdmin(principal))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -245,7 +247,7 @@ public static partial class AuthEndpoints
     {
         var principal = GetPrincipal(httpContext);
         if (principal is null) return Results.Unauthorized();
-        if (principal.Role != "admin") return Results.StatusCode(StatusCodes.Status403Forbidden);
+        if (!IsHumanAdmin(principal)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var recovery = await repository.GetCredentialRecoveryRequestAsync(recoveryId.Trim(), ct);
         if (recovery is null || recovery.RequestType != "human")
@@ -270,11 +272,14 @@ public static partial class AuthEndpoints
         [FromBody] IssueAgentApiKeyRequest? request,
         AuthRepository repository,
         TokenService tokenService,
+        IHostEnvironment environment,
+        AuditLogger auditLogger,
+        AgentNotificationSocketHub socketHub,
         CancellationToken ct)
     {
         var principal = GetPrincipal(httpContext);
         if (principal is null) return Results.Unauthorized();
-        if (principal.Role != "admin") return Results.StatusCode(StatusCodes.Status403Forbidden);
+        if (!IsHumanAdmin(principal)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var recovery = await repository.GetCredentialRecoveryRequestAsync(recoveryId.Trim(), ct);
         if (recovery is null || recovery.RequestType != "ai_agent")
@@ -282,7 +287,7 @@ public static partial class AuthEndpoints
             return Results.NotFound(new { error = "AI agent credential recovery request not found" });
         }
 
-        var activeDays = request?.ActiveDays ?? DefaultAgentOathTokenLifespanDays;
+        var activeDays = environment.IsEnvironment("Demo") ? 1 : request?.ActiveDays ?? DefaultAgentOathTokenLifespanDays;
         if (activeDays is < MinAgentOathTokenLifespanDays or > MaxAgentOathTokenLifespanDays)
         {
             return Results.BadRequest(new { error = "activeDays must be between 1 and 62 days" });
@@ -291,8 +296,11 @@ public static partial class AuthEndpoints
         var rawKey = GenerateApiKey128();
         var now = DateTimeOffset.UtcNow;
         var expiresAt = now.AddDays(activeDays);
-        var saved = await repository.IssueAgentOathTokenRecoveryAsync(recovery.RecoveryId, tokenService.HashToken(rawKey), expiresAt, principal.UserId, now, ct);
+        var saved = await repository.RotateAgentApiKeyAsync(recovery.UserId, tokenService.HashToken(rawKey), rawKey[..16], expiresAt, now, ct);
         if (!saved) return Results.BadRequest(new { error = "unable to issue oath token" });
+        await socketHub.CloseUserConnectionsAsync(recovery.UserId, ct);
+        await auditLogger.LogAsync(principal, "agent_oath_rotated", "AI agent oath token recovered and rotated.", null,
+            new { agentUserId = recovery.UserId, recoveryId = recovery.RecoveryId, tokenPrefix = rawKey[..16], expiresAt }, ct);
         return Results.Ok(new RequestActionResponse("oath token issued", null, rawKey, recovery.Username, expiresAt));
     }
 
@@ -302,6 +310,9 @@ public static partial class AuthEndpoints
         [FromBody] IssueAgentApiKeyRequest? request,
         AuthRepository repository,
         TokenService tokenService,
+        IHostEnvironment environment,
+        AuditLogger auditLogger,
+        AgentNotificationSocketHub socketHub,
         CancellationToken ct)
     {
         var principal = GetPrincipal(httpContext);
@@ -310,7 +321,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (!IsHumanAdmin(principal))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -321,7 +332,7 @@ public static partial class AuthEndpoints
             return Results.NotFound(new { error = "ai request not found" });
         }
 
-        var activeDays = request?.ActiveDays ?? DefaultAgentOathTokenLifespanDays;
+        var activeDays = environment.IsEnvironment("Demo") ? 1 : request?.ActiveDays ?? DefaultAgentOathTokenLifespanDays;
         if (activeDays is < MinAgentOathTokenLifespanDays or > MaxAgentOathTokenLifespanDays)
         {
             return Results.BadRequest(new { error = "activeDays must be between 1 and 62 days" });
@@ -340,6 +351,10 @@ public static partial class AuthEndpoints
             return Results.BadRequest(new { error = "unable to issue oath token" });
         }
 
+        await socketHub.CloseUserConnectionsAsync(userId, ct);
+        await auditLogger.LogAsync(principal, "agent_oath_issued", "AI agent account created or oath token rotated.", null,
+            new { agentUserId = userId, requestId = requestRecord.RequestId, tokenPrefix = apiKeyPrefix, expiresAt }, ct);
+
         return Results.Ok(new RequestActionResponse(
             "oath token issued",
             null,
@@ -354,6 +369,9 @@ public static partial class AuthEndpoints
         [FromBody] IssueAgentApiKeyRequest? request,
         AuthRepository repository,
         TokenService tokenService,
+        IHostEnvironment environment,
+        AuditLogger auditLogger,
+        AgentNotificationSocketHub socketHub,
         CancellationToken ct)
     {
         var principal = GetPrincipal(httpContext);
@@ -362,7 +380,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (!IsHumanAdmin(principal))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -378,7 +396,7 @@ public static partial class AuthEndpoints
             return Results.NotFound(new { error = "ai agent request not found" });
         }
 
-        var activeDays = request?.ActiveDays ?? DefaultAgentOathTokenLifespanDays;
+        var activeDays = environment.IsEnvironment("Demo") ? 1 : request?.ActiveDays ?? DefaultAgentOathTokenLifespanDays;
         if (activeDays is < MinAgentOathTokenLifespanDays or > MaxAgentOathTokenLifespanDays)
         {
             return Results.BadRequest(new { error = "activeDays must be between 1 and 62 days" });
@@ -390,11 +408,15 @@ public static partial class AuthEndpoints
         var now = DateTimeOffset.UtcNow;
         var expiresAt = now.AddDays(activeDays);
 
-        var saved = await repository.SetAgentApiKeyAsync(requestRecord.RequestId, apiKeyHash, apiKeyPrefix, expiresAt, requestRecord.UserId!, now, ct);
+        var saved = await repository.RotateAgentApiKeyAsync(requestRecord.UserId!, apiKeyHash, apiKeyPrefix, expiresAt, now, ct);
         if (!saved)
         {
             return Results.BadRequest(new { error = "unable to issue oath token" });
         }
+
+        await socketHub.CloseUserConnectionsAsync(requestRecord.UserId!, ct);
+        await auditLogger.LogAsync(principal, "agent_oath_rotated", "AI agent oath token reissued.", null,
+            new { agentUserId = requestRecord.UserId, requestId = requestRecord.RequestId, tokenPrefix = apiKeyPrefix, expiresAt }, ct);
 
         return Results.Ok(new RequestActionResponse(
             "oath token issued",
@@ -416,7 +438,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (!IsHumanAdmin(principal))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -426,4 +448,7 @@ public static partial class AuthEndpoints
             ? Results.Ok(new { message = "request removed" })
             : Results.NotFound(new { error = "request not found" });
     }
+
+    private static bool IsHumanAdmin(AuthenticatedUser principal) =>
+        principal.Role == "admin" && principal.UserType == "human";
 }

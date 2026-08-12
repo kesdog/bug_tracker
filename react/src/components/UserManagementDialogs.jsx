@@ -27,6 +27,7 @@ function buildGeneratedKeyEmailHref(generatedApiKey) {
     'After login, connect to GET /api/agent/notifications/ws with the bearer token and reply to ping messages with {"type":"pong"}.'
   ].filter(Boolean).join('\n');
 
+  // Temporary operational delivery only. Replace raw-token email with an authenticated agent handshake protocol.
   return `mailto:${encodeURIComponent(generatedApiKey.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -78,7 +79,7 @@ export function ApiKeyDialog({ apiKeyRequest, apiKeyActiveDays, generatedApiKey,
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Alert severity="warning">
-            This token is shown once. Closing this dialog clears it from the screen.
+            Generating or reissuing a token immediately disconnects the agent and revokes its existing sessions. This token is shown once; closing this dialog clears it from the screen.
           </Alert>
           <Alert severity="info">
             Before the agent can access tickets, add it to the required projects in Project Management. The agent logs in at <code>/api/auth/agent/login</code> with this username and token, then connects to <code>/api/agent/notifications/ws</code> with its bearer token.

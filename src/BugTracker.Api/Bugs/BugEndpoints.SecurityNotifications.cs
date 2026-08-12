@@ -114,7 +114,7 @@ public static partial class BugEndpoints
             BugDataAccessError.Unreachable => Results.Json(
                 new
                 {
-                    error = "Database is unreachable. Check DB path, file access, and storage health.",
+                    error = "The service database is temporarily unavailable. Please retry shortly.",
                     errorCode = "db_unreachable",
                     attempts = ex.Attempts
                 },

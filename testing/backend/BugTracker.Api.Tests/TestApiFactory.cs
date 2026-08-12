@@ -39,11 +39,13 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>, IDisposable
 
     private readonly string _dbPath;
     private readonly string _logDirectory;
+    private readonly string _webRootDirectory;
     private readonly SqliteConnectionFactory _connectionFactory;
     private readonly long? _readinessMinimumFreeBytes;
     private readonly int? _agentHeartbeatIntervalSeconds;
     private readonly string _environment;
     private readonly int? _demoMaxTickets;
+    private readonly bool? _publicDemoEnabled;
 
     public TestApiFactory()
         : this(null, null, true, "Testing", null)
@@ -58,15 +60,20 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>, IDisposable
 
     public static TestApiFactory CreateEmpty() => new(null, null, false, "Testing", null);
     public static TestApiFactory CreateDemo(int? maxTickets = null) => new(null, null, true, "Demo", maxTickets);
+    public static TestApiFactory CreatePrivateDemo() => new(null, null, true, "Demo", null, publicDemoEnabled: false);
+    public static TestApiFactory WithMaxTickets(int maxTickets) => new(null, null, true, "Testing", maxTickets);
 
-    private TestApiFactory(long? readinessMinimumFreeBytes, int? agentHeartbeatIntervalSeconds, bool seedBaseline, string environment, int? demoMaxTickets)
+    private TestApiFactory(long? readinessMinimumFreeBytes, int? agentHeartbeatIntervalSeconds, bool seedBaseline, string environment, int? demoMaxTickets, bool? publicDemoEnabled = null)
     {
         _readinessMinimumFreeBytes = readinessMinimumFreeBytes;
         _agentHeartbeatIntervalSeconds = agentHeartbeatIntervalSeconds;
         _environment = environment;
         _demoMaxTickets = demoMaxTickets;
+        _publicDemoEnabled = publicDemoEnabled;
         _dbPath = Path.Combine(Path.GetTempPath(), $"bug-tracker-tests-{Guid.NewGuid():N}.db");
         _logDirectory = Path.Combine(Path.GetTempPath(), $"bug-tracker-test-logs-{Guid.NewGuid():N}");
+        _webRootDirectory = Path.Combine(Path.GetTempPath(), $"bug-tracker-test-wwwroot-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_webRootDirectory);
         _connectionFactory = new SqliteConnectionFactory(_dbPath);
         InitializeDatabase(seedBaseline);
     }
@@ -74,6 +81,7 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>, IDisposable
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(_environment);
+        builder.UseWebRoot(_webRootDirectory);
         builder.UseSetting("Auth:TokenSecret", TestTokenSecret);
         builder.ConfigureAppConfiguration((_, configBuilder) =>
         {
@@ -81,7 +89,10 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>, IDisposable
             {
                 ["Database:Path"] = _dbPath,
                 ["Auth:TokenSecret"] = TestTokenSecret,
-                ["Audit:LogDirectory"] = _logDirectory
+                ["Audit:LogDirectory"] = _logDirectory,
+                ["Demo:PublicEnabled"] = _publicDemoEnabled?.ToString() ?? (_environment == "Demo" ? "true" : "false"),
+                // TestServer uses one synthetic client IP. Limit behavior is enabled only in limit-focused factories.
+                ["AuthenticatedAbuse:Enabled"] = (_environment == "Demo" || _demoMaxTickets is not null).ToString()
             };
 
             if (_readinessMinimumFreeBytes is not null)
@@ -95,7 +106,7 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>, IDisposable
             }
             if (_demoMaxTickets is not null)
             {
-                overrideSettings["DemoAbuse:MaxTickets"] = _demoMaxTickets.Value.ToString();
+                overrideSettings["AuthenticatedAbuse:MaxTickets"] = _demoMaxTickets.Value.ToString();
             }
 
             configBuilder.AddInMemoryCollection(overrideSettings);
@@ -272,6 +283,10 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>, IDisposable
         {
             Directory.Delete(_logDirectory, recursive: true);
         }
+        if (Directory.Exists(_webRootDirectory))
+        {
+            Directory.Delete(_webRootDirectory, recursive: true);
+        }
     }
 
     private void InitializeDatabase(bool seedBaseline)
@@ -365,5 +380,18 @@ public sealed class TestApiFactory : WebApplicationFactory<Program>, IDisposable
             """;
         seedAgentAllocationCommand.Parameters.AddWithValue("$user_id", AgentUserId);
         seedAgentAllocationCommand.ExecuteNonQuery();
+
+        using var seedAgentCredentialCommand = connection.CreateCommand();
+        seedAgentCredentialCommand.CommandText = """
+            INSERT INTO user_requests (request_id, email, request_type, username, status, user_id, api_key_hash, api_key_prefix, api_key_expires_at, created_at, updated_at)
+            VALUES ('req_test_agent_credential', $email, 'ai_agent', 'agent_test', 'approved', $user_id, 'test-agent-oath-hash', 'bta_test', '2099-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+            """;
+        seedAgentCredentialCommand.Parameters.AddWithValue("$email", AgentUserEmail);
+        seedAgentCredentialCommand.Parameters.AddWithValue("$user_id", AgentUserId);
+        seedAgentCredentialCommand.ExecuteNonQuery();
+
+        using var completeFirstRunCommand = connection.CreateCommand();
+        completeFirstRunCommand.CommandText = "UPDATE first_run_setup SET phase = 'complete', human_token_ttl_minutes = 480, agent_oath_ttl_days = 30 WHERE singleton_id = 1;";
+        completeFirstRunCommand.ExecuteNonQuery();
     }
 }

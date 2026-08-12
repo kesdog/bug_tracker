@@ -106,7 +106,7 @@ public sealed partial class BugEndpointsIntegrationTests
         Assert.Contains("assigneeUserId", conflict?["changedFields"]?.AsArray().Select(node => node!.GetValue<string>()) ?? []);
         Assert.Equal(1, await _factory.ScalarLongAsync("SELECT COUNT(*) FROM ticket_activity WHERE ticket_id = $id AND kind = 'assigned';", ticketId));
         Assert.Equal(1, await _factory.ScalarLongAsync("SELECT COUNT(*) FROM audit_logs WHERE ticket_id = $id AND action = 'ticket_assigned';", ticketId));
-        Assert.Equal(2, await _factory.ScalarLongAsync("SELECT COUNT(*) FROM outbox_messages WHERE aggregate_id = $id;", ticketId));
+        Assert.Equal(1, await _factory.ScalarLongAsync("SELECT COUNT(*) FROM outbox_messages WHERE aggregate_id = $id AND event_type = 'notification.websocket';", ticketId));
     }
 
     [Fact]

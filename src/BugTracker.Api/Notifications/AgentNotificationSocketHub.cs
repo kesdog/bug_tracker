@@ -202,6 +202,18 @@ public sealed class AgentNotificationSocketHub : IAgentNotificationPublisher
         }
     }
 
+    public async Task CloseUserConnectionsAsync(string userId, CancellationToken ct)
+    {
+        if (!_connections.TryGetValue(userId, out var userConnections))
+        {
+            return;
+        }
+
+        var connections = userConnections.Values.ToArray();
+        await Task.WhenAll(connections.Select(connection =>
+            CloseWithTimeoutAndAbortAsync(connection, WebSocketCloseStatus.PolicyViolation, "credential rotated", ct)));
+    }
+
     public void ResumeConnections()
     {
         lock (_registrySync)

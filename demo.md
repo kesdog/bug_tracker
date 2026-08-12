@@ -7,10 +7,10 @@
 | `admin` | `admin@example.com` | `AdminPass123!` | Admin | All five projects, including sensitive `socket manager` |
 | `alex.senior` | `alex.senior@example.com` | `SeniorPass123!` | Senior | `bugtracker`, `currency & metal converter`, `website (personal)` |
 | `morgan.senior` | `morgan.senior@example.com` | `SeniorPass123!` | Senior | `reservation system`, sensitive `socket manager` |
-| `ava.dev` | `ava.dev@example.com` | `DevPass123!` | Developer | `bugtracker`, `website (personal)` |
-| `noah.dev` | `noah.dev@example.com` | `DevPass123!` | Developer | `currency & metal converter`, `website (personal)` |
-| `mia.dev` | `mia.dev@example.com` | `DevPass123!` | Developer | `reservation system`, sensitive `socket manager` |
-| `liam.dev` | `liam.dev@example.com` | `DevPass123!` | Developer | `bugtracker`, `currency & metal converter`, `reservation system` |
+| `ava.dev` | `ava.dev@example.com` | `DevPass123!!` | Developer | `bugtracker`, `website (personal)` |
+| `noah.dev` | `noah.dev@example.com` | `DevPass123!!` | Developer | `currency & metal converter`, `website (personal)` |
+| `mia.dev` | `mia.dev@example.com` | `DevPass123!!` | Developer | `reservation system`, sensitive `socket manager` |
+| `liam.dev` | `liam.dev@example.com` | `DevPass123!!` | Developer | `bugtracker`, `currency & metal converter`, `reservation system` |
 
 The fixture contains exactly seven active human users and no agents. It creates five projects with 12 realistic tickets each. Every project has four todo, four open, one reopened, and three closed tickets. Ticket dates are generated relative to the reset clock and cover at most the preceding 27 days.
 

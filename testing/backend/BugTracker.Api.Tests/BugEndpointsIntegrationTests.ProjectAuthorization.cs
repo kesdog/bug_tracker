@@ -251,10 +251,9 @@ public sealed partial class BugEndpointsIntegrationTests
             AssigneeUserId: null,
             ProjectId: "project-general"));
 
+        await _factory.ExecuteSqlAsync("UPDATE users SET role = 'senior' WHERE user_id = $user_id;", ("$user_id", TestApiFactory.AgentUserId));
         try
         {
-            var promoteResponse = await adminClient.PatchAsJsonAsync($"/api/auth/users/{TestApiFactory.AgentUserId}/role", new { role = "senior" });
-            Assert.Equal(HttpStatusCode.OK, promoteResponse.StatusCode);
 
             using var agentClient = await CreateAuthorizedClientAsync(TestApiFactory.AgentUserId);
             var allocateResponse = await agentClient.PatchAsJsonAsync("/api/bugs/promoted-agent-assignment-ticket-001/allocate", new
@@ -277,7 +276,7 @@ public sealed partial class BugEndpointsIntegrationTests
         }
         finally
         {
-            await adminClient.PatchAsJsonAsync($"/api/auth/users/{TestApiFactory.AgentUserId}/role", new { role = "dev" });
+            await _factory.ExecuteSqlAsync("UPDATE users SET role = 'dev' WHERE user_id = $user_id;", ("$user_id", TestApiFactory.AgentUserId));
         }
     }
 

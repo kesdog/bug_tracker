@@ -53,6 +53,10 @@ public sealed class DatabaseProvisioner
 
                 INSERT INTO audit_logs (actor_user_id, actor_type, action, message, created_at)
                 VALUES ($user_id, 'human', 'bootstrap_admin', 'Initial administrator created by local bootstrap command.', $now);
+
+                UPDATE first_run_setup
+                SET phase = 'password_change_required', root_admin_user_id = $user_id, updated_at = $now
+                WHERE singleton_id = 1 AND phase = 'not_bootstrapped';
                 """;
             insertCommand.Parameters.AddWithValue("$user_id", userId);
             insertCommand.Parameters.AddWithValue("$email", normalizedEmail);
@@ -96,6 +100,13 @@ public sealed class DatabaseProvisioner
         var now = _timeProvider.GetUtcNow();
         await DemoFixtureStore.InsertAsync(connection, transaction, _passwordHasher, generation, now, ct);
         await DemoFixtureStore.UpdateResetStateAsync(connection, transaction, generation, now, "seed-demo", ct);
+        await using (var setup = connection.CreateCommand())
+        {
+            setup.Transaction = transaction;
+            setup.CommandText = "UPDATE first_run_setup SET phase = 'complete', updated_at = $now WHERE singleton_id = 1;";
+            setup.Parameters.AddWithValue("$now", now.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss"));
+            await setup.ExecuteNonQueryAsync(ct);
+        }
         await DemoFixtureStore.ValidateAsync(connection, transaction, generation, ct);
         await transaction.CommitAsync(ct);
     }
@@ -113,12 +124,12 @@ public sealed class DatabaseProvisioner
 
     private static void ValidatePassword(string password)
     {
-        if (password.Length < 6
+        if (password.Length < 12
             || !password.Any(char.IsDigit)
             || !password.Any(ch => !char.IsLetterOrDigit(ch)))
         {
             throw new ArgumentException(
-                "Password must be at least 6 characters and include a number and special character.",
+                "Password must be at least 12 characters and include a number and special character.",
                 nameof(password));
         }
     }

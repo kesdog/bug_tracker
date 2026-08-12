@@ -27,7 +27,7 @@ public static class ProjectEndpoints
             return Results.Unauthorized();
         }
 
-        var projects = await repository.ListProjectsAsync(principal.UserId, principal.Role, ct);
+        var projects = await repository.ListProjectsAsync(principal.UserId, principal.Role, principal.UserType, ct);
         return Results.Ok(projects);
     }
 
@@ -35,6 +35,7 @@ public static class ProjectEndpoints
         HttpContext context,
         [FromBody] ProjectCreateRequest request,
         ProjectRepository repository,
+        FirstRunSetupService setup,
         CancellationToken ct)
     {
         var principal = GetPrincipal(context);
@@ -82,6 +83,12 @@ public static class ProjectEndpoints
         if (created is null)
         {
             return Results.BadRequest(new { error = "project name already exists" });
+        }
+
+        var state = await setup.GetAsync(ct);
+        if (state.Phase == "project_required" && state.IsRootAdmin(principal.UserId))
+        {
+            await setup.MarkFirstProjectAsync(principal.UserId, created.ProjectId, DateTimeOffset.UtcNow, ct);
         }
 
         return Results.Created($"/api/projects/{created.ProjectId}", created);

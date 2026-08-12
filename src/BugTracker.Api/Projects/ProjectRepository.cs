@@ -15,7 +15,7 @@ public sealed partial class ProjectRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<IReadOnlyList<ProjectDto>> ListProjectsAsync(string userId, string role, CancellationToken ct)
+    public async Task<IReadOnlyList<ProjectDto>> ListProjectsAsync(string userId, string role, string userType, CancellationToken ct)
     {
         await using var connection = await OpenConnectionAsync(readOnly: true, ct);
 
@@ -24,8 +24,8 @@ public sealed partial class ProjectRepository
                    p.owner_user_id, owner.username, owner.role
             FROM projects p
             LEFT JOIN users owner ON owner.user_id = p.owner_user_id
-            WHERE $role = 'admin'
-               OR ($role = 'senior' AND p.visibility = 'normal')
+            WHERE ($user_type = 'human' AND $role = 'admin')
+               OR ($user_type = 'human' AND $role = 'senior' AND p.visibility = 'normal')
                OR EXISTS (
                     SELECT 1
                     FROM project_allocations pa
@@ -41,6 +41,7 @@ public sealed partial class ProjectRepository
         command.CommandText = sql;
         command.Parameters.AddWithValue("$user_id", userId);
         command.Parameters.AddWithValue("$role", role);
+        command.Parameters.AddWithValue("$user_type", userType);
 
         await using var reader = await command.ExecuteReaderAsync(ct);
         var projects = new List<ProjectDto>();

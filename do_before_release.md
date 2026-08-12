@@ -505,13 +505,14 @@ Run primary workflows in light, dark, and system modes. Require:
 Before opening Internet access:
 
 1. Set `ASPNETCORE_ENVIRONMENT=Demo`.
-2. Inject a deployment-specific secret of at least 32 random bytes.
-3. Configure exact `AllowedHosts`, HTTPS `Frontend__Origin`, and trusted proxy IPs.
-4. Keep exactly one writable replica with stop-first updates.
-5. Mount `/data` on a local filesystem volume with an explicit quota, not NFS/SMB.
-6. Expose only the TLS proxy publicly.
-7. Confirm WebSocket upgrade, client IP forwarding, security headers, and rate partitions through that proxy.
-8. Confirm all public quota violations produce the intended structured response.
+2. Set `Demo__PublicEnabled=true` only on isolated disposable infrastructure.
+3. Inject a deployment-specific secret of at least 32 random bytes.
+4. Configure exact `AllowedHosts`, HTTPS `Frontend__Origin`, and trusted proxy IPs.
+5. Keep exactly one writable replica with stop-first updates.
+6. Mount `/data` on a local filesystem volume with an explicit quota, not NFS/SMB.
+7. Expose only the TLS proxy publicly.
+8. Confirm WebSocket upgrade, client IP forwarding, security headers, and rate partitions through that proxy.
+9. Confirm all public quota violations produce the intended structured response.
 
 ## Explicitly Out of Scope for This Demo
 

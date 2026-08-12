@@ -49,8 +49,8 @@ public sealed class TicketWriteAuthorizationService
         var project = await GetProjectAsync(connection, currentProjectId!, ct);
         if (project is null) return TicketWriteAuthorizationResult.Denied("project_not_found");
 
-        var canAccessCurrentProject = actor.Role == "admin" ||
-            (project.Visibility == "normal" && actor.Role == "senior") ||
+        var canAccessCurrentProject = (actor.UserType == "human" && actor.Role == "admin") ||
+            (actor.UserType == "human" && project.Visibility == "normal" && actor.Role == "senior") ||
             await IsMemberAsync(connection, actor.UserId, project.Id, ct);
         var isParticipant = ticket is not null &&
             (ticket.ReporterUserId == actor.UserId || ticket.AssigneeUserId == actor.UserId);
@@ -59,8 +59,8 @@ public sealed class TicketWriteAuthorizationService
         {
             TicketWriteOperation.Create => canAccessCurrentProject,
             TicketWriteOperation.Read => canAccessCurrentProject || (project.Visibility == "normal" && isParticipant),
-            TicketWriteOperation.Manage => actor.Role == "admin" ||
-                (actor.Role == "senior" && canAccessCurrentProject) ||
+            TicketWriteOperation.Manage => (actor.UserType == "human" && actor.Role == "admin") ||
+                (actor.UserType == "human" && actor.Role == "senior" && canAccessCurrentProject) ||
                 (isParticipant && (project.Visibility == "normal" || canAccessCurrentProject)),
             TicketWriteOperation.Assign => actor.UserType == "human" && actor.Role is "senior" or "admin" && canAccessCurrentProject,
             _ => false
@@ -71,8 +71,8 @@ public sealed class TicketWriteAuthorizationService
         {
             var target = await GetProjectAsync(connection, input.TargetProjectId, ct);
             if (target is null) return TicketWriteAuthorizationResult.Denied("invalid_project");
-            var canAccessTarget = actor.Role == "admin" ||
-                (target.Visibility == "normal" && actor.Role == "senior") ||
+            var canAccessTarget = (actor.UserType == "human" && actor.Role == "admin") ||
+                (actor.UserType == "human" && target.Visibility == "normal" && actor.Role == "senior") ||
                 await IsMemberAsync(connection, actor.UserId, target.Id, ct);
             if (!canAccessTarget) return TicketWriteAuthorizationResult.Denied("forbidden");
             if (target.Visibility != project.Visibility && (actor.Role != "admin" || actor.UserType != "human"))

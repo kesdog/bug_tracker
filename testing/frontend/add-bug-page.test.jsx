@@ -110,7 +110,7 @@ describe('add bug page', { timeout: 30000 }, () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await screen.findByTestId('session-card');
@@ -135,7 +135,7 @@ describe('add bug page', { timeout: 30000 }, () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await screen.findByTestId('session-card');
@@ -287,7 +287,7 @@ describe('add bug page', { timeout: 30000 }, () => {
     render(<App />);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     await screen.findByTestId('session-card');
     await user.click(screen.getByRole('button', { name: /add bug/i }));
@@ -356,7 +356,7 @@ describe('add bug page', { timeout: 30000 }, () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await screen.findByTestId('session-card');
@@ -399,7 +399,7 @@ describe('add bug page', { timeout: 30000 }, () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await screen.findByTestId('session-card');
@@ -437,7 +437,7 @@ describe('add bug page', { timeout: 30000 }, () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/email/i), 'dev@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'DevPass123!');
+    await user.type(screen.getByLabelText(/password/i), 'DevPass123!!');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await screen.findByTestId('session-card');

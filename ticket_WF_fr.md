@@ -120,7 +120,7 @@ Plusieurs personnes peuvent consulter le même ticket en même temps. Pour évit
 3. Si personne n’a modifié le ticket entre-temps, la modification est enregistrée et le ticket reçoit un nouveau numéro de version.
 4. Si quelqu’un d’autre a enregistré une modification auparavant, l’application bloque l’enregistrement au lieu d’écraser son travail plus récent.
 
-Cela peut se produire lorsque deux personnes modifient le rapport, changent l’assignation ou les métadonnées, ferment un ticket, le rouvrent ou effectuent une autre action presque au même moment.
+Cela peut se produire lorsque deux personnes modifient le ticket, changent l’assignation ou les métadonnées, ferment un ticket, le rouvrent ou effectuent une autre action presque au même moment.
 
 ### Que faire en cas de conflit
 

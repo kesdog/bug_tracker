@@ -11,7 +11,8 @@ public static partial class AuthEndpoints
         AuthRepository repository,
         PasswordHasherService hasher,
         TokenService tokenService,
-        PublicEndpointIdentityRateLimiter rateLimiter,
+        FirstRunSetupService setup,
+        LoginSecurityMonitor loginSecurity,
         AuditLogger auditLogger,
         CancellationToken ct)
     {
@@ -26,27 +27,33 @@ public static partial class AuthEndpoints
         }
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        using var rateLimitLease = await rateLimiter.AcquireAsync(PublicRateLimitPolicies.HumanLogin, normalizedEmail, ct);
-        if (!rateLimitLease.IsAcquired)
+        var publicIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var decision = await loginSecurity.CheckAsync(normalizedEmail, publicIp, "human-password", ct);
+        if (decision.IsLocked)
         {
-            return RateLimitResponses.TooManyRequests(httpContext, rateLimitLease);
+            return LoginSecurityMonitor.LockedResult(httpContext, decision.LockedUntil);
         }
 
         var user = await repository.GetUserByEmailAsync(normalizedEmail, ct);
         if (user is null || user.IsActive != 1)
         {
-            return Results.Unauthorized();
+            var failed = await loginSecurity.RecordFailureAsync(normalizedEmail, publicIp, "human-password", ct);
+            return failed.IsLocked ? LoginSecurityMonitor.LockedResult(httpContext, failed.LockedUntil) : Results.Unauthorized();
         }
 
         if (!hasher.Verify(request.Password, user.PasswordHash))
         {
-            return Results.Unauthorized();
+            var failed = await loginSecurity.RecordFailureAsync(normalizedEmail, publicIp, "human-password", ct);
+            return failed.IsLocked ? LoginSecurityMonitor.LockedResult(httpContext, failed.LockedUntil) : Results.Unauthorized();
         }
+
+        await loginSecurity.RecordSuccessAsync(normalizedEmail, publicIp, "human-password", ct);
 
         var token = tokenService.GenerateRawToken();
         var tokenHash = tokenService.HashToken(token);
         var now = DateTimeOffset.UtcNow;
-        var expiresAt = now.AddHours(24);
+        var setupState = await setup.GetAsync(ct);
+        var expiresAt = now.AddMinutes(setupState.HumanTokenTtlMinutes ?? FirstRunSetupService.DefaultHumanTokenTtlMinutes);
 
         await repository.CreateAuthTokenAsync(user.UserId, tokenHash, now, expiresAt, ct);
         await repository.UpdateLastSeenAsync(user.UserId, now, ct);
@@ -70,10 +77,18 @@ public static partial class AuthEndpoints
         [FromBody] AgentLoginRequest request,
         AuthRepository repository,
         TokenService tokenService,
-        PublicEndpointIdentityRateLimiter rateLimiter,
+        FirstRunSetupService setup,
+        LoginSecurityMonitor loginSecurity,
         AuditLogger auditLogger,
         CancellationToken ct)
     {
+        if (!(await setup.GetAsync(ct)).IsComplete)
+        {
+            return Results.Json(
+                new { error = "first-run setup is incomplete", errorCode = "setup_incomplete" },
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.OathToken))
         {
             return Results.BadRequest(new { error = "username and oathToken are required" });
@@ -85,23 +100,28 @@ public static partial class AuthEndpoints
         }
 
         var username = NormalizeUserId(request.Username);
-        using var rateLimitLease = await rateLimiter.AcquireAsync(PublicRateLimitPolicies.AgentLogin, username, ct);
-        if (!rateLimitLease.IsAcquired)
+        var publicIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var decision = await loginSecurity.CheckAsync(username, publicIp, "agent-oath", ct);
+        if (decision.IsLocked)
         {
-            return RateLimitResponses.TooManyRequests(httpContext, rateLimitLease);
+            return LoginSecurityMonitor.LockedResult(httpContext, decision.LockedUntil);
         }
 
         var oathTokenHash = tokenService.HashToken(request.OathToken.Trim());
         var user = await repository.GetAgentUserByOathTokenAsync(username, oathTokenHash, DateTimeOffset.UtcNow, ct);
         if (user is null || user.IsActive != 1)
         {
-            return Results.Unauthorized();
+            var failed = await loginSecurity.RecordFailureAsync(username, publicIp, "agent-oath", ct);
+            return failed.IsLocked ? LoginSecurityMonitor.LockedResult(httpContext, failed.LockedUntil) : Results.Unauthorized();
         }
+
+        await loginSecurity.RecordSuccessAsync(username, publicIp, "agent-oath", ct);
 
         var token = tokenService.GenerateRawToken();
         var tokenHash = tokenService.HashToken(token);
         var now = DateTimeOffset.UtcNow;
-        var expiresAt = user.OathTokenExpiresAt;
+        var configuredExpiry = now.AddDays((await setup.GetAsync(ct)).AgentOathTtlDays ?? FirstRunSetupService.DefaultAgentOathTtlDays);
+        var expiresAt = user.OathTokenExpiresAt < configuredExpiry ? user.OathTokenExpiresAt : configuredExpiry;
 
         await repository.CreateAuthTokenAsync(user.UserId, tokenHash, now, expiresAt, ct);
         await repository.UpdateLastSeenAsync(user.UserId, now, ct);

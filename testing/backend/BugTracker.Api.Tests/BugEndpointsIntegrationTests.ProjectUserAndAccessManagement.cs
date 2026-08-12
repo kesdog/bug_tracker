@@ -235,7 +235,7 @@ public sealed partial class BugEndpointsIntegrationTests
     }
 
     [Fact]
-    public async Task SetupPassword_AcceptsSixCharacterPasswordWithNumberAndSpecialCharacter()
+    public async Task SetupPassword_RequiresAtLeastTwelveCharactersWithNumberAndSpecialCharacter()
     {
         using var adminClient = _factory.CreateClient();
         adminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.CreateAccessTokenAsync(TestApiFactory.AdminUserId));
@@ -253,7 +253,7 @@ public sealed partial class BugEndpointsIntegrationTests
         {
             email,
             token,
-            newPassword = "lower1!"
+            newPassword = "lowercase1!x"
         });
 
         Assert.Equal(HttpStatusCode.Created, requestResponse.StatusCode);
@@ -282,18 +282,20 @@ public sealed partial class BugEndpointsIntegrationTests
         var link = body?["link"]?.GetValue<string>();
         var expiresAt = body?["expiresAt"]?.GetValue<DateTimeOffset>();
         var token = Uri.UnescapeDataString(new Uri(link!).Query.Split("token=")[1]);
+        var activeToken = await _factory.CreateAccessTokenAsync(TestApiFactory.DefaultUserId);
+        var secondActiveToken = await _factory.CreateAccessTokenAsync(TestApiFactory.DefaultUserId);
 
         var resetResponse = await publicClient.PostAsJsonAsync("/api/auth/setup-password", new
         {
             email = TestApiFactory.DefaultUserEmail,
             token,
-            newPassword = "reset1!"
+            newPassword = "reset-password1!"
         });
         var repeatResponse = await publicClient.PostAsJsonAsync("/api/auth/setup-password", new
         {
             email = TestApiFactory.DefaultUserEmail,
             token,
-            newPassword = "reset2!"
+            newPassword = "reset-password2!"
         });
 
         Assert.Equal(HttpStatusCode.Accepted, requestResponse.StatusCode);
@@ -304,6 +306,13 @@ public sealed partial class BugEndpointsIntegrationTests
         Assert.InRange(expiresAt!.Value, beforeIssue.AddMinutes(30).AddSeconds(-1), beforeIssue.AddMinutes(30).AddSeconds(2));
         Assert.Equal(HttpStatusCode.OK, resetResponse.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, repeatResponse.StatusCode);
+
+        using var firstSessionClient = _factory.CreateClient();
+        firstSessionClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", activeToken);
+        using var secondSessionClient = _factory.CreateClient();
+        secondSessionClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secondActiveToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await firstSessionClient.GetAsync("/api/auth/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await secondSessionClient.GetAsync("/api/auth/me")).StatusCode);
     }
 
     [Fact]
@@ -526,9 +535,18 @@ public sealed partial class BugEndpointsIntegrationTests
         var issueResponse = await adminClient.PostAsJsonAsync($"/api/auth/requests/{requestId}/issue-api-key", new { activeDays = 7 });
         var issueBody = await issueResponse.Content.ReadFromJsonAsync<JsonObject>();
         var userId = issueBody?["username"]?.GetValue<string>();
+        var oldOathToken = issueBody?["apiKey"]?.GetValue<string>();
 
         Assert.Equal(HttpStatusCode.OK, issueResponse.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(userId));
+        Assert.False(string.IsNullOrWhiteSpace(oldOathToken));
+
+        using var oldAgentLoginClient = _factory.CreateClient();
+        var oldLogin = await oldAgentLoginClient.PostAsJsonAsync("/api/auth/agent/login", new { username = userId, oathToken = oldOathToken });
+        var oldLoginBody = await oldLogin.Content.ReadFromJsonAsync<JsonObject>();
+        var oldBearerToken = oldLoginBody?["accessToken"]?.GetValue<string>();
+        Assert.Equal(HttpStatusCode.OK, oldLogin.StatusCode);
+        Assert.False(string.IsNullOrWhiteSpace(oldBearerToken));
 
         var reissueResponse = await adminClient.PostAsJsonAsync($"/api/auth/users/{userId}/issue-api-key", new { activeDays = 14 });
         var reissueBody = await reissueResponse.Content.ReadFromJsonAsync<JsonObject>();
@@ -538,12 +556,34 @@ public sealed partial class BugEndpointsIntegrationTests
         Assert.Equal(userId, reissueBody?["username"]?.GetValue<string>());
         Assert.False(string.IsNullOrWhiteSpace(newOathToken));
 
+        Assert.Equal(HttpStatusCode.Unauthorized, (await oldAgentLoginClient.PostAsJsonAsync("/api/auth/agent/login", new { username = userId, oathToken = oldOathToken })).StatusCode);
+        using var revokedBearerClient = _factory.CreateClient();
+        revokedBearerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", oldBearerToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await revokedBearerClient.GetAsync("/api/auth/me")).StatusCode);
+
         using var agentLoginClient = _factory.CreateClient();
         var loginResponse = await agentLoginClient.PostAsJsonAsync("/api/auth/agent/login", new { username = userId, oathToken = newOathToken });
         var loginBody = await loginResponse.Content.ReadFromJsonAsync<JsonObject>();
 
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(loginBody?["accessToken"]?.GetValue<string>()));
+    }
+
+    [Fact]
+    public async Task AgentCannotAccessIdentityManagementOrReceiveNonDevRole()
+    {
+        using var adminClient = _factory.CreateClient();
+        adminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.CreateAccessTokenAsync(TestApiFactory.AdminUserId));
+        await _factory.ExecuteSqlAsync(
+            "UPDATE users SET role = 'admin' WHERE user_id = $user_id;",
+            ("$user_id", TestApiFactory.AgentUserId));
+        using var agentClient = _factory.CreateClient();
+        agentClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await _factory.CreateAccessTokenAsync(TestApiFactory.AgentUserId));
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await agentClient.GetAsync("/api/auth/users")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agentClient.GetAsync("/api/auth/requests")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await adminClient.PatchAsJsonAsync(
+            $"/api/auth/users/{TestApiFactory.AgentUserId}/role", new { role = "admin" })).StatusCode);
     }
 
     [Theory]

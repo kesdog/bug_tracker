@@ -31,7 +31,21 @@ public sealed class OutboxDispatchGate
 
     public async Task<IDisposable> PauseAndDrainAsync(CancellationToken ct)
     {
-        Task wait;
+        var pause = Pause();
+        try
+        {
+            await WaitForDrainAsync(ct);
+            return pause;
+        }
+        catch
+        {
+            pause.Dispose();
+            throw;
+        }
+    }
+
+    public IDisposable Pause()
+    {
         lock (_sync)
         {
             if (_paused)
@@ -40,19 +54,18 @@ public sealed class OutboxDispatchGate
             }
             _paused = true;
             _resumed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            wait = _activeDispatches == 0 ? Task.CompletedTask : _drained.Task;
-        }
-
-        try
-        {
-            await wait.WaitAsync(ct);
             return new PauseLease(this);
         }
-        catch
+    }
+
+    public Task WaitForDrainAsync(CancellationToken ct)
+    {
+        Task wait;
+        lock (_sync)
         {
-            Resume();
-            throw;
+            wait = _activeDispatches == 0 ? Task.CompletedTask : _drained.Task;
         }
+        return wait.WaitAsync(ct);
     }
 
     private void ExitDispatch()

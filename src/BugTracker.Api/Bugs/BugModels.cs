@@ -94,7 +94,7 @@ public sealed record TicketContactDto(string UserId, string Username, string Rol
 
 public sealed record AssignableUserDto(string UserId, string Username, string Email, string Role, string UserType);
 
-public sealed record BugListAccessScope(string UserId, string Role);
+public sealed record BugListAccessScope(string UserId, string Role, string UserType);
 public sealed record BugCursor(string CreatedAt, string Id);
 public sealed record BugSummaryDto(
     long ActiveTotal,

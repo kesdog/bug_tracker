@@ -10,12 +10,12 @@ public sealed class ProjectAuthorizationService(ProjectRepository repository)
         ProjectDto project,
         CancellationToken ct)
     {
-        if (principal.Role == "admin")
+        if (principal.UserType == "human" && principal.Role == "admin")
         {
             return true;
         }
 
-        if (project.Visibility == ProjectVisibilities.Normal && principal.Role == "senior")
+        if (principal.UserType == "human" && project.Visibility == ProjectVisibilities.Normal && principal.Role == "senior")
         {
             return true;
         }
@@ -85,7 +85,7 @@ public sealed class ProjectAuthorizationService(ProjectRepository repository)
         BugTicketDto ticket,
         CancellationToken ct)
     {
-        if (principal.Role == "admin")
+        if (principal.UserType == "human" && principal.Role == "admin")
         {
             return true;
         }
@@ -96,7 +96,7 @@ public sealed class ProjectAuthorizationService(ProjectRepository repository)
             return false;
         }
 
-        if (principal.Role == "senior" && await CanAccessProjectAsync(principal, project, ct))
+        if (principal.UserType == "human" && principal.Role == "senior" && await CanAccessProjectAsync(principal, project, ct))
         {
             return true;
         }

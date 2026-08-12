@@ -142,7 +142,7 @@ export function SetupPasswordForm({ email, confirmEmail, password, confirmPasswo
     <Stack component="form" onSubmit={onSubmit} spacing={2}>
       <TextField id="setupEmail" type="email" autoComplete="email" label={t('auth.email', 'Email')} value={email} helperText={t('auth.passwordLinkHelp', 'This password link is issued for this email address.')} slotProps={{ htmlInput: { readOnly: true } }} fullWidth />
       <TextField id="setupEmailConfirm" type="email" autoComplete="email" label={t('auth.confirmEmail', 'Confirm Email')} value={confirmEmail} slotProps={{ htmlInput: { readOnly: true } }} fullWidth />
-      <TextField id="newPassword" type="password" label={t('auth.newPassword', 'New Password')} value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder={t('auth.atLeast6', 'At least 6 characters')} helperText={t('auth.passwordRules', 'Use at least 6 characters, including a number and special character.')} fullWidth />
+      <TextField id="newPassword" type="password" label={t('auth.newPassword', 'New Password')} value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder={t('auth.atLeast12', 'At least 12 characters')} helperText={t('auth.passwordRules', 'Use at least 12 characters, including a number and special character.')} fullWidth />
       <TextField id="newPasswordConfirm" type="password" label={t('auth.confirmNewPassword', 'Confirm New Password')} value={confirmPassword} onChange={(event) => onConfirmPasswordChange(event.target.value)} placeholder={t('auth.repeatNewPassword', 'Repeat new password')} fullWidth />
       <Button type="submit" disabled={loading} fullWidth>{loading ? t('auth.saving', 'Saving...') : t('auth.setPassword', 'Set Password')}</Button>
     </Stack>

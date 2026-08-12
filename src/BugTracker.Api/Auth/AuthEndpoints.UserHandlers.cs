@@ -18,7 +18,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (principal.Role != "admin" || principal.UserType != "human")
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -79,7 +79,7 @@ public static partial class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        if (principal.Role != "admin")
+        if (principal.Role != "admin" || principal.UserType != "human")
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -98,6 +98,17 @@ public static partial class AuthEndpoints
         if (string.Equals(principal.UserId, userId.Trim(), StringComparison.Ordinal) && normalizedRole != "admin")
         {
             return Results.BadRequest(new { error = "admin cannot remove their own admin role" });
+        }
+
+        var target = await repository.GetUserRoleByUserIdAsync(userId.Trim(), ct);
+        if (target is null)
+        {
+            return Results.NotFound(new { error = "user not found" });
+        }
+
+        if (target.UserType == "agent" && normalizedRole != "dev")
+        {
+            return Results.BadRequest(new { error = "AI agents must retain the dev role" });
         }
 
         var updated = await repository.UpdateUserRoleAsync(userId.Trim(), normalizedRole, DateTimeOffset.UtcNow, ct);

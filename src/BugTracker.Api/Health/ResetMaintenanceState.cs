@@ -6,9 +6,13 @@ public interface IResetMaintenanceState
 
     IDisposable BeginReset();
 
-    IDisposable? TryBeginApiRequest();
+    IDisposable? TryBeginApiRequest(CancellationTokenSource? cancellation = null, Action? abort = null);
 
     Task<IDisposable> BeginResetAndDrainAsync(CancellationToken ct = default);
+
+    Task WaitForDrainAsync(CancellationToken ct = default);
+
+    Task CancelActiveRequestsAndDrainAsync(CancellationToken ct = default);
 }
 
 public sealed class ResetMaintenanceState : IResetMaintenanceState
@@ -16,6 +20,7 @@ public sealed class ResetMaintenanceState : IResetMaintenanceState
     private readonly object _sync = new();
     private int _activeResetLeases;
     private int _activeApiRequests;
+    private readonly HashSet<ActiveRequest> _requests = [];
     private TaskCompletionSource _drained = CompletedSource();
 
     public bool IsResetInProgress => Volatile.Read(ref _activeResetLeases) > 0;
@@ -29,7 +34,7 @@ public sealed class ResetMaintenanceState : IResetMaintenanceState
         return new ResetLease(this);
     }
 
-    public IDisposable? TryBeginApiRequest()
+    public IDisposable? TryBeginApiRequest(CancellationTokenSource? cancellation = null, Action? abort = null)
     {
         lock (_sync)
         {
@@ -42,7 +47,9 @@ public sealed class ResetMaintenanceState : IResetMaintenanceState
             {
                 _drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             }
-            return new ApiRequestLease(this);
+            var request = new ActiveRequest(cancellation, abort);
+            _requests.Add(request);
+            return new ApiRequestLease(this, request);
         }
     }
 
@@ -67,6 +74,27 @@ public sealed class ResetMaintenanceState : IResetMaintenanceState
         }
     }
 
+    public Task WaitForDrainAsync(CancellationToken ct = default)
+    {
+        Task drainTask;
+        lock (_sync)
+        {
+            drainTask = _activeApiRequests == 0 ? Task.CompletedTask : _drained.Task;
+        }
+        return drainTask.WaitAsync(ct);
+    }
+
+    public async Task CancelActiveRequestsAndDrainAsync(CancellationToken ct = default)
+    {
+        ActiveRequest[] requests;
+        lock (_sync)
+        {
+            requests = [.. _requests];
+        }
+        foreach (var request in requests) request.CancelAndAbort();
+        await WaitForDrainAsync(ct);
+    }
+
     private void EndReset()
     {
         lock (_sync)
@@ -75,10 +103,11 @@ public sealed class ResetMaintenanceState : IResetMaintenanceState
         }
     }
 
-    private void EndApiRequest()
+    private void EndApiRequest(ActiveRequest request)
     {
         lock (_sync)
         {
+            _requests.Remove(request);
             if (--_activeApiRequests == 0)
             {
                 _drained.TrySetResult();
@@ -104,10 +133,27 @@ public sealed class ResetMaintenanceState : IResetMaintenanceState
     }
 
 
-    private sealed class ApiRequestLease(ResetMaintenanceState owner) : IDisposable
+    private sealed class ApiRequestLease(ResetMaintenanceState owner, ActiveRequest request) : IDisposable
     {
         private ResetMaintenanceState? _owner = owner;
 
-        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.EndApiRequest();
+        public void Dispose()
+        {
+            var current = Interlocked.Exchange(ref _owner, null);
+            if (current is null) return;
+            current.EndApiRequest(request);
+            request.Dispose();
+        }
+    }
+
+    private sealed class ActiveRequest(CancellationTokenSource? cancellation, Action? abort) : IDisposable
+    {
+        public void CancelAndAbort()
+        {
+            try { cancellation?.Cancel(); } catch (ObjectDisposedException) { }
+            try { abort?.Invoke(); } catch { }
+        }
+
+        public void Dispose() => cancellation?.Dispose();
     }
 }

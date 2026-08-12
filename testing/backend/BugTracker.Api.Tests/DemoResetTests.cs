@@ -222,14 +222,20 @@ public sealed class DemoResetTests
     }
 
     [Fact]
-    public async Task Coordinator_AbortsWhenApiDrainExceedsConfiguredTimeout()
+    public async Task Coordinator_ForceCancelsRequestWhenApiDrainExceedsConfiguredTimeout()
     {
         await WithDatabaseAsync(async factory =>
         {
             await new SqliteMigrationRunner(factory).MigrateAsync();
             var maintenance = new ResetMaintenanceState();
-            using var activeRequest = maintenance.TryBeginApiRequest();
+            using var requestCancellation = new CancellationTokenSource();
+            var activeRequest = maintenance.TryBeginApiRequest(requestCancellation);
             Assert.NotNull(activeRequest);
+            var releaseRequest = Task.Run(async () =>
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, requestCancellation.Token).ContinueWith(_ => { });
+                activeRequest.Dispose();
+            });
             var coordinator = new DemoResetCoordinator(
                 new DemoResetService(factory, new PasswordHasherService(), new FixedTimeProvider(Now)),
                 Options.Create(new DemoResetOptions
@@ -246,9 +252,10 @@ public sealed class DemoResetTests
                 new FixedTimeProvider(Now),
                 NullLogger<DemoResetCoordinator>.Instance);
 
-            await Assert.ThrowsAsync<TimeoutException>(() => coordinator.RunIfDueAsync());
+            Assert.True(await coordinator.RunIfDueAsync());
+            await releaseRequest;
             Assert.False(maintenance.IsResetInProgress);
-            Assert.Null(await new DemoResetService(factory, new PasswordHasherService()).GetLastResetAtAsync());
+            Assert.NotNull(await new DemoResetService(factory, new PasswordHasherService()).GetLastResetAtAsync());
         });
     }
 
@@ -366,7 +373,7 @@ public sealed class DemoResetTests
             Assert.Equal(0, await ScalarAsync(verify, "SELECT COUNT(*) FROM outbox_messages;"));
             Assert.Equal(60, await ScalarAsync(verify, "SELECT COUNT(*) FROM bug_tickets;"));
             Assert.Equal(0, await ScalarAsync(verify, "SELECT COUNT(*) FROM bug_tickets WHERE id NOT LIKE 'demo-g000002-%';"));
-            Assert.Equal(11, await ScalarAsync(verify, "SELECT COUNT(*) FROM schema_migrations;"));
+            Assert.Equal(13, await ScalarAsync(verify, "SELECT COUNT(*) FROM schema_migrations;"));
             Assert.Equal(1, await ScalarAsync(verify, "SELECT COUNT(*) FROM demo_reset_state WHERE generation = 2 AND last_environment = 'development';"));
             Assert.Equal(1, await ScalarAsync(verify, "SELECT cleanup_pending FROM demo_reset_state;"));
             Assert.Equal(0, await ScalarAsync(verify, "SELECT COUNT(*) FROM pragma_foreign_key_check;"));

@@ -51,9 +51,14 @@ public static class AgentNotificationWebSocketEndpoint
             return;
         }
 
-        if (context.RequestServices.GetRequiredService<IHostEnvironment>().IsEnvironment("Demo"))
+        if (!(await context.RequestServices.GetRequiredService<FirstRunSetupService>().GetAsync(context.RequestAborted)).IsComplete)
         {
-            var protection = context.RequestServices.GetRequiredService<DemoAbuseProtection>();
+            await WriteJsonAsync(context, StatusCodes.Status503ServiceUnavailable, new { error = "first-run setup is incomplete", errorCode = "setup_incomplete" });
+            return;
+        }
+
+        {
+            var protection = context.RequestServices.GetRequiredService<AuthenticatedAbuseProtection>();
             using var ipLease = protection.Acquire("websocket", $"ip:{context.Connection.RemoteIpAddress}");
             using var userLease = protection.Acquire("websocket", $"user:{principal.UserId}", permitMultiplier: 10);
             if (!ipLease.IsAcquired || !userLease.IsAcquired)

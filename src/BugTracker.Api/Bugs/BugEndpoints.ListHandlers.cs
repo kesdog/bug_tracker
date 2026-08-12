@@ -85,7 +85,7 @@ public static partial class BugEndpoints
                 : null;
 
             var requestedLimit = cursorMode ? resolvedLimit + 1 : resolvedLimit;
-            var scope = new BugListAccessScope(principal.UserId, principal.Role);
+            var scope = new BugListAccessScope(principal.UserId, principal.Role, principal.UserType);
             var tickets = await repository.ListBugsAsync(
                 statusFilter.Value,
                 requestedLimit,
@@ -172,7 +172,7 @@ public static partial class BugEndpoints
         {
             if (cursorMode)
             {
-                var scope = new BugListAccessScope(principal.UserId, principal.Role);
+                var scope = new BugListAccessScope(principal.UserId, principal.Role, principal.UserType);
                 var ticketsPage = await repository.ListBugsAsync(BugStatusFilter.Active, resolvedLimit + 1, false, scope, null, search, constrainedFilters, decodedCursor, ct);
                 var hasMore = ticketsPage.Count > resolvedLimit;
                 var page = ticketsPage.Take(resolvedLimit).ToList();
@@ -203,8 +203,8 @@ public static partial class BugEndpoints
     {
         var principal = GetPrincipal(context);
         if (principal is null) return Results.Unauthorized();
-        var summary = await repository.GetSummaryAsync(new BugListAccessScope(principal.UserId, principal.Role), ct);
-        var visibleProjects = await projectRepository.ListProjectsAsync(principal.UserId, principal.Role, ct);
+        var summary = await repository.GetSummaryAsync(new BugListAccessScope(principal.UserId, principal.Role, principal.UserType), ct);
+        var visibleProjects = await projectRepository.ListProjectsAsync(principal.UserId, principal.Role, principal.UserType, ct);
         return Results.Ok(summary with { VisibleProjects = visibleProjects.Count });
     }
 

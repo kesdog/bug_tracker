@@ -15,10 +15,10 @@ internal static class DemoFixtureStore
         new("usr_admin_001", "admin", "admin@example.com", "admin", "AdminPass123!"),
         new("usr_senior_001", "alex.senior", "alex.senior@example.com", "senior", "SeniorPass123!"),
         new("usr_senior_002", "morgan.senior", "morgan.senior@example.com", "senior", "SeniorPass123!"),
-        new("usr_dev_001", "ava.dev", "ava.dev@example.com", "dev", "DevPass123!"),
-        new("usr_dev_002", "noah.dev", "noah.dev@example.com", "dev", "DevPass123!"),
-        new("usr_dev_003", "mia.dev", "mia.dev@example.com", "dev", "DevPass123!"),
-        new("usr_dev_004", "liam.dev", "liam.dev@example.com", "dev", "DevPass123!")
+        new("usr_dev_001", "ava.dev", "ava.dev@example.com", "dev", "DevPass123!!"),
+        new("usr_dev_002", "noah.dev", "noah.dev@example.com", "dev", "DevPass123!!"),
+        new("usr_dev_003", "mia.dev", "mia.dev@example.com", "dev", "DevPass123!!"),
+        new("usr_dev_004", "liam.dev", "liam.dev@example.com", "dev", "DevPass123!!")
     ];
 
     private static readonly ProjectFixture[] Projects =
@@ -113,6 +113,10 @@ internal static class DemoFixtureStore
         CancellationToken ct)
     {
         await ExecuteAsync(connection, transaction, """
+            UPDATE first_run_setup
+            SET root_admin_user_id = NULL, first_project_id = NULL, phase = 'not_bootstrapped', updated_at = datetime('now')
+            WHERE singleton_id = 1;
+
             DELETE FROM outbox_messages;
             DELETE FROM notifications;
             DELETE FROM audit_logs;

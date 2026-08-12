@@ -12,25 +12,40 @@ services:
       - path: .env
         required: true
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Demo}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:8080
       Database__Path: /data/bug_tracker.db
       Audit__LogDirectory: /data/audit
       Readiness__MinimumFreeBytes: ${Readiness__MinimumFreeBytes:-104857600}
+      TicketDataStorage__MaxBytes: ${TicketDataStorage__MaxBytes:-5000000000}
       Auth__TokenSecret: ${Auth__TokenSecret:?copy .env.example to .env and set Auth__TokenSecret}
-      DemoReset__Enabled: ${DemoReset__Enabled:-true}
+      Demo__PublicEnabled: ${Demo__PublicEnabled:-false}
+      DemoReset__Enabled: ${DemoReset__Enabled:-false}
       DemoReset__HourUtc: ${DemoReset__HourUtc:-4}
       DemoReset__AllowedEnvironments__0: ${DemoReset__AllowedEnvironments__0:-Demo}
       DemoReset__DrainTimeoutSeconds: ${DemoReset__DrainTimeoutSeconds:-30}
       AgentWebSocket__CloseTimeoutSeconds: ${AgentWebSocket__CloseTimeoutSeconds:-5}
       AgentWebSocket__MaxConnections: ${AgentWebSocket__MaxConnections:-100}
       AgentWebSocket__MaxConnectionsPerUser: ${AgentWebSocket__MaxConnectionsPerUser:-5}
-      DemoAbuse__StorageSafetyReserveBytes: ${DemoAbuse__StorageSafetyReserveBytes:-268435456}
-      DemoAbuse__MaxProjects: ${DemoAbuse__MaxProjects:-25}
-      DemoAbuse__MaxTickets: ${DemoAbuse__MaxTickets:-300}
-      DemoAbuse__MaxComments: ${DemoAbuse__MaxComments:-600}
-      DemoAbuse__MaxAttachments: ${DemoAbuse__MaxAttachments:-100}
-      DemoAbuse__MaxEvidenceBytes: ${DemoAbuse__MaxEvidenceBytes:-268435456}
+      AuthenticatedAbuse__StorageSafetyReserveBytes: ${AuthenticatedAbuse__StorageSafetyReserveBytes:-268435456}
+      AuthenticatedAbuse__Enabled: ${AuthenticatedAbuse__Enabled:-true}
+      AuthenticatedAbuse__MaxProjects: ${AuthenticatedAbuse__MaxProjects:-25}
+      AuthenticatedAbuse__MaxTickets: ${AuthenticatedAbuse__MaxTickets:-300}
+      AuthenticatedAbuse__MaxComments: ${AuthenticatedAbuse__MaxComments:-600}
+      AuthenticatedAbuse__MaxAttachments: ${AuthenticatedAbuse__MaxAttachments:-100}
+      AuthenticatedAbuse__MaxEvidenceBytes: ${AuthenticatedAbuse__MaxEvidenceBytes:-268435456}
+      AuthenticatedAbuse__GeneralPermitLimit: ${AuthenticatedAbuse__GeneralPermitLimit:-180}
+      AuthenticatedAbuse__GeneralWindowMinutes: ${AuthenticatedAbuse__GeneralWindowMinutes:-1}
+      AuthenticatedAbuse__CreatePermitLimit: ${AuthenticatedAbuse__CreatePermitLimit:-10}
+      AuthenticatedAbuse__CreateWindowMinutes: ${AuthenticatedAbuse__CreateWindowMinutes:-10}
+      AuthenticatedAbuse__WritePermitLimit: ${AuthenticatedAbuse__WritePermitLimit:-60}
+      AuthenticatedAbuse__WriteWindowMinutes: ${AuthenticatedAbuse__WriteWindowMinutes:-10}
+      AuthenticatedAbuse__UploadPermitLimit: ${AuthenticatedAbuse__UploadPermitLimit:-10}
+      AuthenticatedAbuse__UploadWindowMinutes: ${AuthenticatedAbuse__UploadWindowMinutes:-10}
+      AuthenticatedAbuse__ExportPermitLimit: ${AuthenticatedAbuse__ExportPermitLimit:-10}
+      AuthenticatedAbuse__ExportWindowMinutes: ${AuthenticatedAbuse__ExportWindowMinutes:-10}
+      AuthenticatedAbuse__WebSocketPermitLimit: ${AuthenticatedAbuse__WebSocketPermitLimit:-10}
+      AuthenticatedAbuse__WebSocketWindowMinutes: ${AuthenticatedAbuse__WebSocketWindowMinutes:-5}
       ForwardedHeaders__Enabled: ${ForwardedHeaders__Enabled:-false}
       ForwardedHeaders__ForwardLimit: ${ForwardedHeaders__ForwardLimit:-1}
       ForwardedHeaders__KnownProxies__0: ${ForwardedHeaders__KnownProxies__0:-127.0.0.1}

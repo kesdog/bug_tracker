@@ -13,7 +13,8 @@ public sealed class DemoResetCoordinator(
     AgentNotificationSocketHub socketHub,
     AuditFilePublisher auditFilePublisher,
     TimeProvider timeProvider,
-    ILogger<DemoResetCoordinator> logger)
+    ILogger<DemoResetCoordinator> logger,
+    OutboxDispatcher? outboxDispatcher = null)
 {
     private readonly SemaphoreSlim _resetLock = new(1, 1);
     private readonly DemoResetOptions _options = configuredOptions.Value;
@@ -68,12 +69,26 @@ public sealed class DemoResetCoordinator(
                 return false;
             }
 
-            using var maintenanceLease = await DrainWithTimeoutAsync(
-                token => maintenanceState.BeginResetAndDrainAsync(token), "API requests", ct);
-            using var outboxLease = await DrainWithTimeoutAsync(
-                token => outboxDispatchGate.PauseAndDrainAsync(token), "outbox dispatch", ct);
+            using var maintenanceLease = maintenanceState.BeginReset();
+            using var outboxLease = outboxDispatchGate.Pause();
             try
             {
+                await DrainOrForceAsync(
+                    token => maintenanceState.WaitForDrainAsync(token),
+                    token => maintenanceState.CancelActiveRequestsAndDrainAsync(token),
+                    "API requests", ct);
+                await DrainOrForceAsync(
+                    token => outboxDispatchGate.WaitForDrainAsync(token),
+                    async token =>
+                    {
+                        outboxDispatcher?.CancelActiveDispatches();
+                        await outboxDispatchGate.WaitForDrainAsync(token);
+                    },
+                    "outbox dispatch", ct);
+                if (outboxDispatcher is not null)
+                {
+                    await outboxDispatcher.ReleaseClaimsAsync(ct);
+                }
                 await DrainTaskWithTimeoutAsync(
                     token => socketHub.PauseAndCloseAllAsync(token), "agent WebSocket handlers", ct);
 
@@ -227,6 +242,29 @@ public sealed class DemoResetCoordinator(
                 _options.DrainTimeoutSeconds);
             throw new TimeoutException(
                 $"Demo reset aborted because {operation} did not drain within {_options.DrainTimeoutSeconds} seconds.");
+        }
+    }
+
+    private async Task DrainOrForceAsync(
+        Func<CancellationToken, Task> drain,
+        Func<CancellationToken, Task> force,
+        string operation,
+        CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(_options.DrainTimeoutSeconds));
+        try
+        {
+            await drain(timeout.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "Demo reset is force-cancelling {Operation} after {TimeoutSeconds} seconds.",
+                operation, _options.DrainTimeoutSeconds);
+            using var forcedTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            forcedTimeout.CancelAfter(TimeSpan.FromSeconds(_options.DrainTimeoutSeconds));
+            await force(forcedTimeout.Token);
         }
     }
 }

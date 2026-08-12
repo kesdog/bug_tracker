@@ -80,9 +80,9 @@ public static partial class AuthEndpoints
 
     private static bool IsStrongPassword(string password, out string error)
     {
-        if (password.Length < 6)
+        if (password.Length < 12)
         {
-            error = "password must be at least 6 characters";
+            error = "password must be at least 12 characters";
             return false;
         }
 

@@ -18,7 +18,9 @@ public sealed class SqliteMigrationRunner(SqliteConnectionFactory connectionFact
         LoadMigration(8, "outbox_retention", "008_outbox_retention.sql"),
         LoadMigration(9, "credential_recovery_requests", "009_credential_recovery_requests.sql"),
         LoadMigration(10, "ticket_cancellation", "010_ticket_cancellation.sql"),
-        LoadMigration(11, "system_lifecycle_audit", "011_system_lifecycle_audit.sql")
+        LoadMigration(11, "system_lifecycle_audit", "011_system_lifecycle_audit.sql"),
+        LoadMigration(12, "first_run_setup", "012_first_run_setup.sql"),
+        LoadMigration(13, "login_security_state", "013_login_security_state.sql")
     ];
 
     public async Task MigrateAsync(CancellationToken ct = default)

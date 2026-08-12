@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BugTracker.Api.Audit;
 using BugTracker.Api.Database;
 using Microsoft.Data.Sqlite;
 
@@ -10,12 +11,15 @@ public sealed class OutboxDispatcher(
     AuditFilePublisher auditFilePublisher,
     ILogger<OutboxDispatcher> logger,
     OutboxDispatchGate? dispatchGate = null,
-    IHostEnvironment? environment = null) : BackgroundService
+    IHostEnvironment? environment = null,
+    AuditLogger? auditLogger = null) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(5);
     private readonly string _dispatcherId = Guid.NewGuid().ToString("N");
     private readonly OutboxDispatchGate _dispatchGate = dispatchGate ?? new OutboxDispatchGate();
+    private readonly object _cancellationSync = new();
+    private CancellationTokenSource _dispatchCancellation = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -41,38 +45,44 @@ public sealed class OutboxDispatcher(
     public async Task<int> DispatchBatchAsync(CancellationToken ct)
     {
         using var dispatchLease = await _dispatchGate.EnterAsync(ct);
-        var items = await ClaimBatchAsync(ct);
+        CancellationToken forceToken;
+        lock (_cancellationSync) forceToken = _dispatchCancellation.Token;
+        using var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct, forceToken);
+        var operationToken = operationCancellation.Token;
+        var items = await ClaimBatchAsync(operationToken);
         foreach (var item in items)
         {
-            await using var connection = await connectionFactory.OpenConnectionAsync(readOnly: false, ct);
+            await using var connection = await connectionFactory.OpenConnectionAsync(readOnly: false, operationToken);
             try
             {
                 if (item.Type == "notification.websocket")
                 {
                     var notification = JsonSerializer.Deserialize<NotificationDto>(item.Payload, JsonOptions)
                         ?? throw new JsonException("Invalid notification outbox payload.");
-                    if (!await CheckDeliveryEligibilityAsync(connection, notification, ct))
+                    if (!await CheckDeliveryEligibilityAsync(connection, notification, operationToken))
                     {
-                        await MarkProcessedAsync(connection, item.Id, ct);
+                        await LogNotificationDeliveryAsync(notification, "agent_notification_cancelled", "Agent notification cancelled because the agent no longer has an active oath token or project allocation.", operationToken);
+                        await MarkProcessedAsync(connection, item.Id, operationToken);
                         continue;
                     }
 
-                    using var sendCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    using var sendCts = CancellationTokenSource.CreateLinkedTokenSource(operationToken);
                     sendCts.CancelAfter(SendTimeout);
                     await notificationPublisher.SendNotificationAsync(notification, sendCts.Token);
-                    await MarkProcessedAsync(connection, item.Id, ct);
+                    await LogNotificationDeliveryAsync(notification, "agent_notification_sent", "Agent notification delivered to active project member.", operationToken);
+                    await MarkProcessedAsync(connection, item.Id, operationToken);
                 }
                 else if (item.Type == "audit.jsonl")
                 {
-                    await auditFilePublisher.AppendAsync(item.Payload, ct);
-                    await MarkProcessedAsync(connection, item.Id, ct);
+                    await auditFilePublisher.AppendAsync(item.Payload, operationToken);
+                    await MarkProcessedAsync(connection, item.Id, operationToken);
                 }
                 else
                 {
-                    await MarkProcessedAsync(connection, item.Id, ct);
+                    await MarkProcessedAsync(connection, item.Id, operationToken);
                 }
             }
-            catch (OperationCanceledException ex) when (!ct.IsCancellationRequested)
+            catch (OperationCanceledException ex) when (!operationToken.IsCancellationRequested)
             {
                 logger.LogWarning(ex, "Outbox WebSocket send {OutboxId} exceeded the bounded send timeout and will be retried.", item.Id);
                 await MarkFailedAsync(connection, item.Id, "WebSocket send timed out.", ct);
@@ -84,8 +94,35 @@ public sealed class OutboxDispatcher(
             }
         }
 
-        await PruneProcessedAsync(ct);
+        await PruneProcessedAsync(operationToken);
         return items.Count;
+    }
+
+    public void CancelActiveDispatches()
+    {
+        lock (_cancellationSync) _dispatchCancellation.Cancel();
+    }
+
+    public async Task ReleaseClaimsAsync(CancellationToken ct)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(readOnly: false, ct);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE outbox_messages SET claim_owner = NULL, claimed_until = NULL WHERE claim_owner = $owner;";
+        command.Parameters.AddWithValue("$owner", _dispatcherId);
+        await command.ExecuteNonQueryAsync(ct);
+        lock (_cancellationSync)
+        {
+            _dispatchCancellation.Dispose();
+            _dispatchCancellation = new CancellationTokenSource();
+        }
+    }
+
+    private Task LogNotificationDeliveryAsync(NotificationDto notification, string action, string message, CancellationToken ct)
+    {
+        return auditLogger is null
+            ? Task.CompletedTask
+            : auditLogger.LogAsync(notification.UserId, "agent", action, message, notification.TicketId,
+                new { notificationId = notification.Id, ticketId = notification.TicketId, kind = notification.Kind }, ct);
     }
 
     private async Task PruneProcessedAsync(CancellationToken ct)
@@ -225,12 +262,19 @@ public sealed class OutboxDispatcher(
               AND b.id = $ticket_id
               AND (n.ticket_version IS NULL OR b.version = n.ticket_version)
               AND (n.kind <> 'ticket_assigned' OR b.assignee_user_id = n.user_id)
-              AND (
-                u.role = 'admin'
-                OR EXISTS (SELECT 1 FROM project_allocations pa WHERE pa.project_id = b.project_id AND pa.user_id = u.user_id)
-                OR (u.role = 'senior' AND p.visibility = 'normal')
-                OR (p.visibility = 'normal' AND (b.reporter_user_id = u.user_id OR b.assignee_user_id = u.user_id))
-              )
+               AND u.user_type = 'agent'
+               AND EXISTS (
+                    SELECT 1 FROM user_requests r
+                    WHERE r.user_id = u.user_id
+                      AND r.request_type = 'ai_agent'
+                      AND r.status = 'approved'
+                      AND r.api_key_hash IS NOT NULL
+                      AND r.api_key_expires_at >= datetime('now')
+               )
+               AND EXISTS (
+                    SELECT 1 FROM project_allocations pa
+                    WHERE pa.project_id = b.project_id AND pa.user_id = u.user_id
+               )
             LIMIT 1;
             """;
         command.Parameters.AddWithValue("$user_id", notification.UserId);

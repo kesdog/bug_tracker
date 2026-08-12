@@ -12,9 +12,11 @@ public sealed class ResetMaintenanceMiddleware(IResetMaintenanceState maintenanc
         }
 
         var isAgentSocket = context.Request.Path.StartsWithSegments("/api/agent/notifications/ws");
-        var requestLease = maintenanceState.TryBeginApiRequest();
+        var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        var requestLease = maintenanceState.TryBeginApiRequest(requestCancellation, context.Abort);
         if (requestLease is null)
         {
+            requestCancellation.Dispose();
             if (isReadiness)
             {
                 // Readiness has its own reset-specific response contract and performs no database
@@ -27,6 +29,7 @@ public sealed class ResetMaintenanceMiddleware(IResetMaintenanceState maintenanc
             return;
         }
 
+        context.RequestAborted = requestCancellation.Token;
         using var finiteLease = new FiniteRequestLease(requestLease);
         if (isAgentSocket)
         {
